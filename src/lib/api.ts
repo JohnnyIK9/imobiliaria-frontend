@@ -38,7 +38,25 @@ export async function getCidadesApi(estadoId?: string) {
 }
 
 export async function getRegioesPorCidadeApi(cidadeId: number) {
-  const res = await fetch(`${API_URL}/api/cidades/${cidadeId}/regioes`, { credentials: 'include' })
+  const res = await fetch(`${API_URL}/api/admin/regioes?cidade_id=${cidadeId}`, { credentials: 'include' })
+  return res
+}
+
+export async function criarCidadeApi(dados: {
+  nome: string
+  estadoId: string
+  prefixo: string
+  latCentro: number
+  lngCentro: number
+  zoomPadrao: number
+  ativa: boolean
+}) {
+  const res = await fetch(`${API_URL}/api/admin/cidades`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    credentials: 'include',
+    body: JSON.stringify(dados),
+  })
   return res
 }
 

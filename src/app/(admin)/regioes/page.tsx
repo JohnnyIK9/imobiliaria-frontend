@@ -9,6 +9,7 @@ import {
   criarRegiaoApi,
   editarRegiaoApi,
   excluirRegiaoApi,
+  criarCidadeApi,
 } from '@/lib/api'
 import type { MapaRegioesRef, Ponto, RegiaoMapa } from '@/components/admin/MapaRegioes'
 
@@ -16,13 +17,12 @@ const MapaRegioes = dynamic(() => import('@/components/admin/MapaRegioes'), { ss
 
 type Estado = { id: string; nome: string }
 type Cidade = { id: number; nome: string; estadoId: string; latCentro: number; lngCentro: number; zoomPadrao: number }
-type Regiao = { id: number; nome: string; coordenadas: string; totalImoveis: number }
+type Regiao = { id: number; nome: string; coordenadas: string }
 
 type ModoEdicao = {
   regiao: Regiao
   pontos: Ponto[]
   nomeEdit: string
-  pontoSelecionado: number | null
 }
 
 export default function RegioesPage() {
@@ -53,6 +53,12 @@ export default function RegioesPage() {
   const [toast, setToast] = useState<{ msg: string; tipo: 'sucesso' | 'erro' } | null>(null)
   const [painelAberto, setPainelAberto] = useState(true)
   const [mapaCarregado, setMapaCarregado] = useState(false)
+
+  const [modalCidade, setModalCidade] = useState(false)
+  const [novaCidade, setNovaCidade] = useState({
+    nome: '', estadoId: '', prefixo: '', latCentro: '', lngCentro: '', zoomPadrao: '13', ativa: true,
+  })
+  const [salvandoCidade, setSalvandoCidade] = useState(false)
 
   // Carrega estados ao montar
   useEffect(() => {
@@ -106,7 +112,6 @@ export default function RegioesPage() {
           id: r.id,
           nome: r.nome,
           coordenadas: JSON.parse(r.coordenadas || '[]'),
-          totalImoveis: r.totalImoveis,
         }))
         mapaRef.current?.renderizarRegioes(mapped, null)
       }
@@ -117,13 +122,14 @@ export default function RegioesPage() {
   // Atualiza polígonos no mapa quando regiões mudam (só após o mapa estar pronto)
   useEffect(() => {
     if (!mapaCarregado) return
-    const mapped: RegiaoMapa[] = regioes.map((r) => ({
-      id: r.id,
-      nome: r.nome,
-      coordenadas: JSON.parse(r.coordenadas || '[]'),
-      totalImoveis: r.totalImoveis,
-    }))
-    mapaRef.current?.renderizarRegioes(mapped, modoEdicao?.regiao.id ?? null)
+    const mapped: RegiaoMapa[] = regioes
+      .filter((r) => r.id !== modoEdicao?.regiao.id)
+      .map((r) => ({
+        id: r.id,
+        nome: r.nome,
+        coordenadas: JSON.parse(r.coordenadas || '[]'),
+      }))
+    mapaRef.current?.renderizarRegioes(mapped, null)
   }, [regioes, modoEdicao, mapaCarregado])
 
   async function carregarRegioes(cidadeId: number) {
@@ -187,11 +193,10 @@ export default function RegioesPage() {
   // ── Edição ─────────────────────────────────────────────
   function iniciarEdicao(r: Regiao) {
     const pts: Ponto[] = JSON.parse(r.coordenadas || '[]')
-    setModoEdicao({ regiao: r, pontos: pts, nomeEdit: r.nome, pontoSelecionado: null })
+    setModoEdicao({ regiao: r, pontos: pts, nomeEdit: r.nome })
     mapaRef.current?.ativarEdicao(
       pts,
       (novos) => setModoEdicao((prev) => prev ? { ...prev, pontos: novos } : null),
-      (i) => setModoEdicao((prev) => prev ? { ...prev, pontoSelecionado: i } : null),
     )
   }
 
@@ -203,7 +208,6 @@ export default function RegioesPage() {
         id: r.id,
         nome: r.nome,
         coordenadas: JSON.parse(r.coordenadas || '[]'),
-        totalImoveis: r.totalImoveis,
       }))
       mapaRef.current?.renderizarRegioes(mapped, null)
     }
@@ -250,6 +254,45 @@ export default function RegioesPage() {
       exibirToast('Erro de conexão.', 'erro')
     } finally {
       setSalvando(false)
+    }
+  }
+
+  async function salvarNovaCidade() {
+    const prefixo = novaCidade.prefixo.trim().toUpperCase()
+    if (!novaCidade.nome.trim() || !novaCidade.estadoId || prefixo.length !== 3 || !/^[A-Z]{3}$/.test(prefixo)) return
+    const lat = parseFloat(novaCidade.latCentro)
+    const lng = parseFloat(novaCidade.lngCentro)
+    const zoom = parseInt(novaCidade.zoomPadrao)
+    if (isNaN(lat) || isNaN(lng) || isNaN(zoom)) return
+    setSalvandoCidade(true)
+    try {
+      const res = await criarCidadeApi({
+        nome: novaCidade.nome.trim(),
+        estadoId: novaCidade.estadoId,
+        prefixo,
+        latCentro: lat,
+        lngCentro: lng,
+        zoomPadrao: zoom,
+        ativa: novaCidade.ativa,
+      })
+      if (res.ok) {
+        exibirToast('Cidade cadastrada!', 'sucesso')
+        setModalCidade(false)
+        setNovaCidade({ nome: '', estadoId: '', prefixo: '', latCentro: '', lngCentro: '', zoomPadrao: '13', ativa: true })
+        // Recarrega as cidades do estado selecionado no header
+        if (novaCidade.estadoId === estadoSel) {
+          getCidadesApi(estadoSel).then(async (r) => {
+            if (r.ok) setCidades(await r.json())
+          })
+        }
+      } else {
+        const err = await res.json().catch(() => null)
+        exibirToast(err?.message ?? 'Erro ao cadastrar cidade.', 'erro')
+      }
+    } catch {
+      exibirToast('Erro de conexão.', 'erro')
+    } finally {
+      setSalvandoCidade(false)
     }
   }
 
@@ -313,6 +356,22 @@ export default function RegioesPage() {
             disabled={!estadoSel || cidades.length === 0}
             width="220px"
           />
+          <button
+            onClick={() => setModalCidade(true)}
+            style={{
+              backgroundColor: 'rgba(74,222,128,0.12)',
+              color: '#4ADE80',
+              border: '1px solid rgba(74,222,128,0.25)',
+              borderRadius: '8px',
+              padding: '8px 14px',
+              fontSize: '13px',
+              fontWeight: 700,
+              cursor: 'pointer',
+              whiteSpace: 'nowrap',
+            }}
+          >
+            + Cadastrar cidade
+          </button>
         </div>
 
         {/* Toggle painel mobile */}
@@ -427,7 +486,7 @@ export default function RegioesPage() {
                   onChange={(v) => setModoEdicao({ ...modoEdicao, nomeEdit: v })}
                 />
                 <p style={{ color: 'var(--color-gray-dark)', fontSize: '11px', margin: '10px 0 0 0' }}>
-                  Clique num marcador para selecioná-lo (fica vermelho) e edite as coordenadas abaixo.
+                  Arraste os marcadores no mapa ou edite as coordenadas abaixo.
                 </p>
               </div>
 
@@ -438,24 +497,18 @@ export default function RegioesPage() {
                 </p>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
                   {modoEdicao.pontos.map((p, i) => {
-                    const selecionado = modoEdicao.pontoSelecionado === i
                     return (
                       <div
                         key={i}
-                        onClick={() => {
-                          setModoEdicao((prev) => prev ? { ...prev, pontoSelecionado: i } : null)
-                          mapaRef.current?.selecionarPontoEdicao(i)
-                        }}
                         style={{
-                          backgroundColor: selecionado ? 'rgba(248,113,113,0.12)' : 'var(--color-green-mid)',
-                          border: `1px solid ${selecionado ? 'rgba(248,113,113,0.4)' : 'transparent'}`,
+                          backgroundColor: 'var(--color-green-mid)',
+                          border: '1px solid transparent',
                           borderRadius: '8px',
                           padding: '8px 10px',
-                          cursor: 'pointer',
                         }}
                       >
                         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '6px' }}>
-                          <span style={{ color: selecionado ? '#F87171' : 'rgba(255,255,255,0.5)', fontSize: '11px', fontWeight: 700 }}>
+                          <span style={{ color: 'rgba(255,255,255,0.5)', fontSize: '11px', fontWeight: 700 }}>
                             Ponto {i + 1}
                           </span>
                           {modoEdicao.pontos.length > 3 && (
@@ -630,9 +683,6 @@ export default function RegioesPage() {
                           <p style={{ color: 'var(--color-white)', fontSize: '13px', fontWeight: 700, margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                             {r.nome}
                           </p>
-                          <p style={{ color: 'var(--color-gray-dark)', fontSize: '11px', margin: 0 }}>
-                            {r.totalImoveis} imóvel(is)
-                          </p>
                         </div>
                         <div style={{ display: 'flex', gap: '6px', flexShrink: 0 }}>
                           <button
@@ -675,6 +725,148 @@ export default function RegioesPage() {
           )}
         </div>
       </div>
+      {/* Modal cadastrar cidade */}
+      {modalCidade && (
+        <div
+          onClick={() => setModalCidade(false)}
+          style={{
+            position: 'fixed', inset: 0, zIndex: 2000,
+            backgroundColor: 'rgba(0,0,0,0.6)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+          }}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              backgroundColor: 'var(--color-green-dark)',
+              border: '1px solid rgba(255,255,255,0.1)',
+              borderRadius: '14px',
+              padding: '28px',
+              width: '100%',
+              maxWidth: '420px',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '16px',
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <p style={{ color: 'var(--color-white)', fontSize: '15px', fontWeight: 800, margin: 0 }}>
+                Cadastrar cidade
+              </p>
+              <button
+                onClick={() => setModalCidade(false)}
+                style={{ background: 'none', border: 'none', color: 'rgba(255,255,255,0.4)', fontSize: '18px', cursor: 'pointer', lineHeight: 1 }}
+              >
+                ✕
+              </button>
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              {/* Estado */}
+              <div>
+                <label style={{ display: 'block', color: 'var(--color-white)', fontSize: '13px', fontWeight: 700, marginBottom: '6px' }}>
+                  Estado
+                </label>
+                <select
+                  value={novaCidade.estadoId}
+                  onChange={(e) => setNovaCidade((p) => ({ ...p, estadoId: e.target.value }))}
+                  style={{
+                    width: '100%', boxSizing: 'border-box',
+                    backgroundColor: 'var(--color-green-mid)',
+                    color: novaCidade.estadoId ? 'var(--color-white)' : 'rgba(255,255,255,0.4)',
+                    border: '1px solid rgba(255,255,255,0.1)',
+                    borderRadius: '8px', padding: '9px 12px',
+                    fontSize: '13px', fontWeight: 700, outline: 'none',
+                  }}
+                >
+                  <option value="" disabled hidden>Selecione o estado</option>
+                  {estados.map((e) => (
+                    <option key={e.id} value={e.id} style={{ color: '#fff', backgroundColor: '#374C4B' }}>
+                      {e.nome}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Nome */}
+              <CampoModal
+                label="Nome da cidade"
+                placeholder="Ex: Araçatuba"
+                value={novaCidade.nome}
+                onChange={(v) => setNovaCidade((p) => ({ ...p, nome: v }))}
+              />
+
+              {/* Prefixo */}
+              <div>
+                <label style={{ display: 'block', color: 'var(--color-white)', fontSize: '13px', fontWeight: 700, marginBottom: '6px' }}>
+                  Prefixo <span style={{ color: 'rgba(255,255,255,0.35)', fontWeight: 400, fontSize: '11px' }}>(3 letras maiúsculas — ex: ARC)</span>
+                </label>
+                <input
+                  type="text"
+                  maxLength={3}
+                  placeholder="ARC"
+                  value={novaCidade.prefixo}
+                  onChange={(e) => setNovaCidade((p) => ({ ...p, prefixo: e.target.value.toUpperCase().replace(/[^A-Z]/g, '') }))}
+                  style={estiloInputModal}
+                  onFocus={(e) => (e.currentTarget.style.borderColor = 'var(--color-blue)')}
+                  onBlur={(e) => (e.currentTarget.style.borderColor = 'rgba(255,255,255,0.1)')}
+                />
+              </div>
+
+              {/* Lat / Lng */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+                <CampoModal
+                  label="Latitude centro"
+                  placeholder="-21.2089"
+                  value={novaCidade.latCentro}
+                  onChange={(v) => setNovaCidade((p) => ({ ...p, latCentro: v }))}
+                  type="number"
+                />
+                <CampoModal
+                  label="Longitude centro"
+                  placeholder="-50.4328"
+                  value={novaCidade.lngCentro}
+                  onChange={(v) => setNovaCidade((p) => ({ ...p, lngCentro: v }))}
+                  type="number"
+                />
+              </div>
+
+              {/* Zoom */}
+              <CampoModal
+                label="Zoom padrão"
+                placeholder="13"
+                value={novaCidade.zoomPadrao}
+                onChange={(v) => setNovaCidade((p) => ({ ...p, zoomPadrao: v }))}
+                type="number"
+              />
+
+              {/* Ativa */}
+              <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
+                <input
+                  type="checkbox"
+                  checked={novaCidade.ativa}
+                  onChange={(e) => setNovaCidade((p) => ({ ...p, ativa: e.target.checked }))}
+                  style={{ accentColor: 'var(--color-blue)', width: '15px', height: '15px' }}
+                />
+                <span style={{ color: 'var(--color-white)', fontSize: '13px', fontWeight: 700 }}>Cidade ativa</span>
+              </label>
+            </div>
+
+            <div style={{ display: 'flex', gap: '10px', marginTop: '4px' }}>
+              <button onClick={() => setModalCidade(false)} style={{ ...btnSecundario, flex: 1 }}>
+                Cancelar
+              </button>
+              <button
+                onClick={salvarNovaCidade}
+                disabled={salvandoCidade}
+                style={btnPrimario(salvandoCidade)}
+              >
+                {salvandoCidade ? 'Salvando...' : 'Cadastrar'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
@@ -789,5 +981,49 @@ function Select({
         </option>
       ))}
     </select>
+  )
+}
+
+const estiloInputModal: React.CSSProperties = {
+  width: '100%',
+  boxSizing: 'border-box',
+  backgroundColor: 'var(--color-green-mid)',
+  color: 'var(--color-white)',
+  border: '1px solid rgba(255,255,255,0.1)',
+  borderRadius: '8px',
+  padding: '9px 12px',
+  fontSize: '13px',
+  outline: 'none',
+}
+
+function CampoModal({
+  label,
+  placeholder,
+  value,
+  onChange,
+  type = 'text',
+}: {
+  label: string
+  placeholder?: string
+  value: string
+  onChange: (v: string) => void
+  type?: string
+}) {
+  return (
+    <div>
+      <label style={{ display: 'block', color: 'var(--color-white)', fontSize: '13px', fontWeight: 700, marginBottom: '6px' }}>
+        {label}
+      </label>
+      <input
+        type={type}
+        step="any"
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder={placeholder}
+        style={estiloInputModal}
+        onFocus={(e) => (e.currentTarget.style.borderColor = 'var(--color-blue)')}
+        onBlur={(e) => (e.currentTarget.style.borderColor = 'rgba(255,255,255,0.1)')}
+      />
+    </div>
   )
 }

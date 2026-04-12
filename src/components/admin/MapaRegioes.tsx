@@ -10,7 +10,6 @@ export type RegiaoMapa = {
   id: number
   nome: string
   coordenadas: Ponto[]
-  totalImoveis: number
 }
 
 export type MapaRegioesRef = {
@@ -20,10 +19,9 @@ export type MapaRegioesRef = {
   getPontos: () => Ponto[]
   moverParaCidade: (lat: number, lng: number, zoom: number) => void
   renderizarRegioes: (regioes: RegiaoMapa[], selecionada: number | null) => void
-  ativarEdicao: (pontos: Ponto[], onChange: (pontos: Ponto[]) => void, onSelect: (i: number) => void) => void
+  ativarEdicao: (pontos: Ponto[], onChange: (pontos: Ponto[]) => void) => void
   atualizarPontoEdicao: (index: number, lat: number, lng: number) => void
   excluirPontoEdicao: (index: number) => void
-  selecionarPontoEdicao: (index: number | null) => void
   desativarEdicao: () => void
 }
 
@@ -53,8 +51,6 @@ const MapaRegioes = forwardRef<MapaRegioesRef, Props>(function MapaRegioes(
   const poligonoEdicao = useRef<Polygon | null>(null)
   const pontosEdicao = useRef<Ponto[]>([])
   const onChangeEdicao = useRef<((pontos: Ponto[]) => void) | null>(null)
-  const onSelectEdicao = useRef<((i: number) => void) | null>(null)
-  const pontoSelecionado = useRef<number | null>(null)
 
   // Regiões cadastradas
   const poligonosCadastrados = useRef<Polygon[]>([])
@@ -146,16 +142,25 @@ const MapaRegioes = forwardRef<MapaRegioesRef, Props>(function MapaRegioes(
   }
 
   function atualizarPoligonoEdicao(Lsafe: typeof L, mapSafe: LeafletMap) {
-    poligonoEdicao.current?.remove()
     const pts = pontosEdicao.current
-    if (pts.length < 2) return
-    poligonoEdicao.current = Lsafe.polygon(pts as unknown as LatLng[], {
-      color: '#40A6F4',
-      fillColor: '#40A6F4',
-      fillOpacity: 0.15,
-      weight: 2,
-      dashArray: '6 4',
-    }).addTo(mapSafe)
+    if (pts.length < 2) {
+      poligonoEdicao.current?.remove()
+      poligonoEdicao.current = null
+      return
+    }
+    // Atualiza o polígono existente em vez de recriar — evita que fique por cima dos marcadores
+    if (poligonoEdicao.current) {
+      poligonoEdicao.current.setLatLngs(pts as unknown as LatLng[])
+    } else {
+      poligonoEdicao.current = Lsafe.polygon(pts as unknown as LatLng[], {
+        color: '#40A6F4',
+        fillColor: '#40A6F4',
+        fillOpacity: 0.15,
+        weight: 2,
+        dashArray: '6 4',
+        interactive: false,
+      }).addTo(mapSafe)
+    }
   }
 
   function renderizarMarcadoresEdicao(Lsafe: typeof L, mapSafe: LeafletMap) {
@@ -163,28 +168,13 @@ const MapaRegioes = forwardRef<MapaRegioesRef, Props>(function MapaRegioes(
     marcadoresEdicao.current = []
 
     pontosEdicao.current.forEach((p, i) => {
-      const selecionado = pontoSelecionado.current === i
       const m = Lsafe.circleMarker(p as unknown as LatLng, {
-        radius: selecionado ? 9 : 7,
-        color: selecionado ? '#F87171' : '#40A6F4',
-        fillColor: selecionado ? '#F87171' : '#fff',
+        radius: 7,
+        color: '#40A6F4',
+        fillColor: '#fff',
         fillOpacity: 1,
         weight: 2,
       }).addTo(mapSafe)
-
-      // Clique seleciona o ponto
-      m.on('click', () => {
-        if (pontoSelecionado.current !== null && marcadoresEdicao.current[pontoSelecionado.current]) {
-          marcadoresEdicao.current[pontoSelecionado.current].setStyle({
-            radius: 7,
-            color: '#40A6F4',
-            fillColor: '#fff',
-          })
-        }
-        pontoSelecionado.current = i
-        m.setStyle({ radius: 9, color: '#F87171', fillColor: '#F87171' })
-        onSelectEdicao.current?.(i)
-      })
 
       // Arrastar move o ponto
       m.on('mousedown', (ev) => {
@@ -258,13 +248,12 @@ const MapaRegioes = forwardRef<MapaRegioesRef, Props>(function MapaRegioes(
         const poly = L.polygon(r.coordenadas as unknown as LatLng[], {
           color: isSel ? '#fff' : '#40A6F4',
           fillColor: '#40A6F4',
-          fillOpacity: r.totalImoveis > 0 ? 0.22 : 0.06,
+          fillOpacity: 0.15,
           weight: isSel ? 2.5 : 1.5,
-          dashArray: r.totalImoveis > 0 ? undefined : '6 4',
         }).addTo(map)
 
         poly.bindTooltip(
-          `<strong>${r.nome}</strong><br/>${r.totalImoveis} imóvel(is)`,
+          `<strong>${r.nome}</strong>`,
           { permanent: true, direction: 'center', className: 'leaflet-tooltip-regiao' }
         )
 
@@ -272,7 +261,7 @@ const MapaRegioes = forwardRef<MapaRegioesRef, Props>(function MapaRegioes(
       })
     },
 
-    ativarEdicao(pontos, onChange, onSelect) {
+    ativarEdicao(pontos, onChange) {
       const L = LRef.current
       const map = mapRef.current
       if (!L || !map) return
@@ -280,8 +269,6 @@ const MapaRegioes = forwardRef<MapaRegioesRef, Props>(function MapaRegioes(
       editando.current = true
       pontosEdicao.current = [...pontos]
       onChangeEdicao.current = onChange
-      onSelectEdicao.current = onSelect
-      pontoSelecionado.current = null
 
       atualizarPoligonoEdicao(L, map)
       renderizarMarcadoresEdicao(L, map)
@@ -302,31 +289,9 @@ const MapaRegioes = forwardRef<MapaRegioesRef, Props>(function MapaRegioes(
       const map = mapRef.current
       if (!L || !map || pontosEdicao.current.length <= 3) return
       pontosEdicao.current.splice(index, 1)
-      if (pontoSelecionado.current === index) pontoSelecionado.current = null
-      else if (pontoSelecionado.current !== null && pontoSelecionado.current > index)
-        pontoSelecionado.current--
       onChangeEdicao.current?.(pontosEdicao.current)
       atualizarPoligonoEdicao(L, map)
       renderizarMarcadoresEdicao(L, map)
-    },
-
-    selecionarPontoEdicao(index) {
-      if (!LRef.current || !mapRef.current) return
-      if (pontoSelecionado.current !== null && marcadoresEdicao.current[pontoSelecionado.current]) {
-        marcadoresEdicao.current[pontoSelecionado.current].setStyle({
-          radius: 7,
-          color: '#40A6F4',
-          fillColor: '#fff',
-        })
-      }
-      pontoSelecionado.current = index
-      if (index !== null && marcadoresEdicao.current[index]) {
-        marcadoresEdicao.current[index].setStyle({
-          radius: 9,
-          color: '#F87171',
-          fillColor: '#F87171',
-        })
-      }
     },
 
     desativarEdicao() {
@@ -336,8 +301,6 @@ const MapaRegioes = forwardRef<MapaRegioesRef, Props>(function MapaRegioes(
       marcadoresEdicao.current.forEach((m) => m.remove())
       marcadoresEdicao.current = []
       onChangeEdicao.current = null
-      onSelectEdicao.current = null
-      pontoSelecionado.current = null
     },
   }))
 

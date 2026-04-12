@@ -51,6 +51,7 @@ const MapaRegioes = forwardRef<MapaRegioesRef, Props>(function MapaRegioes(
   const poligonoEdicao = useRef<Polygon | null>(null)
   const pontosEdicao = useRef<Ponto[]>([])
   const onChangeEdicao = useRef<((pontos: Ponto[]) => void) | null>(null)
+  const arrastando = useRef(false) // impede que o mouseup do drag dispare um click
 
   // Regiões cadastradas
   const poligonosCadastrados = useRef<Polygon[]>([])
@@ -82,11 +83,21 @@ const MapaRegioes = forwardRef<MapaRegioesRef, Props>(function MapaRegioes(
       }).addTo(map)
 
       map.on('click', (e) => {
-        if (!desenhando.current) return
-        const { lat, lng } = e.latlng
-        pontosDesenho.current.push([lat, lng])
-        atualizarDesenho(map, L)
-        onDesenhoAtualizado?.([...pontosDesenho.current])
+        if (desenhando.current) {
+          const { lat, lng } = e.latlng
+          pontosDesenho.current.push([lat, lng])
+          atualizarDesenho(map, L)
+          onDesenhoAtualizado?.([...pontosDesenho.current])
+          return
+        }
+        if (editando.current) {
+          if (arrastando.current) { arrastando.current = false; return }
+          const { lat, lng } = e.latlng
+          pontosEdicao.current.push([lat, lng])
+          atualizarPoligonoEdicao(L, map)
+          renderizarMarcadoresEdicao(L, map)
+          onChangeEdicao.current?.([...pontosEdicao.current])
+        }
       })
 
       map.on('dblclick', () => {
@@ -181,8 +192,10 @@ const MapaRegioes = forwardRef<MapaRegioesRef, Props>(function MapaRegioes(
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         ;(ev as any).originalEvent?.stopPropagation()
         mapSafe.dragging.disable()
+        let moveu = false
 
         function onMouseMove(e: MouseEvent) {
+          moveu = true
           const rect = containerRef.current!.getBoundingClientRect()
           const latlng = mapSafe.containerPointToLatLng([e.clientX - rect.left, e.clientY - rect.top])
           pontosEdicao.current[i] = [latlng.lat, latlng.lng]
@@ -193,6 +206,8 @@ const MapaRegioes = forwardRef<MapaRegioesRef, Props>(function MapaRegioes(
 
         function onMouseUp() {
           mapSafe.dragging.enable()
+          // Se houve movimento real, sinaliza para suprimir o click seguinte
+          if (moveu) arrastando.current = true
           document.removeEventListener('mousemove', onMouseMove)
           document.removeEventListener('mouseup', onMouseUp)
         }

@@ -1032,9 +1032,9 @@ export default function RegioesPage() {
             </div>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-              {/* Campos somente leitura */}
+              {/* Campos somente leitura — dados do filtro central */}
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
-                <CampoLeitura label="Estado" value={estados.find((e) => e.id === cidadeSel.estadoId)?.nome ?? cidadeSel.estadoId} />
+                <CampoLeitura label="Estado" value={estados.find((e) => e.id === estadoSel)?.nome ?? estadoSel} />
                 <CampoLeitura label="Sigla" value={cidadeSel.prefixo} />
               </div>
               <CampoLeitura label="Cidade" value={cidadeSel.nome} />

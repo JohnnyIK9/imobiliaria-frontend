@@ -60,6 +60,8 @@ export default function RegioesPage() {
     nome: '', estadoId: '', prefixo: '', latCentro: '', lngCentro: '', zoomPadrao: '13', ativa: true,
   })
   const [salvandoCidade, setSalvandoCidade] = useState(false)
+  const [municipiosIBGE, setMunicipiosIBGE] = useState<{ id: number; nome: string }[]>([])
+  const [carregandoMunicipios, setCarregandoMunicipios] = useState(false)
 
   const [modalEditarCidade, setModalEditarCidade] = useState(false)
   const [editCidade, setEditCidade] = useState({
@@ -264,6 +266,22 @@ export default function RegioesPage() {
     }
   }
 
+  async function buscarMunicipiosIBGE(uf: string) {
+    if (!uf) { setMunicipiosIBGE([]); return }
+    setCarregandoMunicipios(true)
+    try {
+      const res = await fetch(`https://servicodados.ibge.gov.br/api/v1/localidades/estados/${uf}/municipios`)
+      if (res.ok) {
+        const data: { id: number; nome: string }[] = await res.json()
+        setMunicipiosIBGE(data.sort((a, b) => a.nome.localeCompare(b.nome)))
+      }
+    } catch {
+      setMunicipiosIBGE([])
+    } finally {
+      setCarregandoMunicipios(false)
+    }
+  }
+
   async function salvarNovaCidade() {
     const prefixo = novaCidade.prefixo.trim().toUpperCase()
     if (!novaCidade.nome.trim() || !novaCidade.estadoId || prefixo.length !== 3 || !/^[A-Z]{3}$/.test(prefixo)) return
@@ -286,6 +304,7 @@ export default function RegioesPage() {
         exibirToast('Cidade cadastrada!', 'sucesso')
         setModalCidade(false)
         setNovaCidade({ nome: '', estadoId: '', prefixo: '', latCentro: '', lngCentro: '', zoomPadrao: '13', ativa: true })
+        setMunicipiosIBGE([])
         // Recarrega as cidades do estado selecionado no header
         if (novaCidade.estadoId === estadoSel) {
           getCidadesApi(estadoSel).then(async (r) => {
@@ -806,7 +825,7 @@ export default function RegioesPage() {
       {/* Modal cadastrar cidade */}
       {modalCidade && (
         <div
-          onClick={() => setModalCidade(false)}
+          onClick={() => { setModalCidade(false); setMunicipiosIBGE([]) }}
           style={{
             position: 'fixed', inset: 0, zIndex: 2000,
             backgroundColor: 'rgba(0,0,0,0.6)',
@@ -832,7 +851,7 @@ export default function RegioesPage() {
                 Cadastrar cidade
               </p>
               <button
-                onClick={() => setModalCidade(false)}
+                onClick={() => { setModalCidade(false); setMunicipiosIBGE([]) }}
                 style={{ background: 'none', border: 'none', color: 'rgba(255,255,255,0.4)', fontSize: '18px', cursor: 'pointer', lineHeight: 1 }}
               >
                 ✕
@@ -847,7 +866,12 @@ export default function RegioesPage() {
                 </label>
                 <select
                   value={novaCidade.estadoId}
-                  onChange={(e) => setNovaCidade((p) => ({ ...p, estadoId: e.target.value }))}
+                  onChange={(e) => {
+                    const uf = e.target.value
+                    setNovaCidade((p) => ({ ...p, estadoId: uf, nome: '' }))
+                    setMunicipiosIBGE([])
+                    buscarMunicipiosIBGE(uf)
+                  }}
                   style={{
                     width: '100%', boxSizing: 'border-box',
                     backgroundColor: 'var(--color-green-mid)',
@@ -866,13 +890,36 @@ export default function RegioesPage() {
                 </select>
               </div>
 
-              {/* Nome */}
-              <CampoModal
-                label="Nome da cidade"
-                placeholder="Ex: Araçatuba"
-                value={novaCidade.nome}
-                onChange={(v) => setNovaCidade((p) => ({ ...p, nome: v }))}
-              />
+              {/* Município (IBGE) */}
+              <div>
+                <label style={{ display: 'block', color: 'var(--color-white)', fontSize: '13px', fontWeight: 700, marginBottom: '6px' }}>
+                  Cidade
+                </label>
+                <select
+                  value={novaCidade.nome}
+                  disabled={!novaCidade.estadoId || carregandoMunicipios}
+                  onChange={(e) => setNovaCidade((p) => ({ ...p, nome: e.target.value }))}
+                  style={{
+                    width: '100%', boxSizing: 'border-box',
+                    backgroundColor: 'var(--color-green-mid)',
+                    color: novaCidade.nome ? 'var(--color-white)' : 'rgba(255,255,255,0.4)',
+                    border: '1px solid rgba(255,255,255,0.1)',
+                    borderRadius: '8px', padding: '9px 12px',
+                    fontSize: '13px', fontWeight: 700, outline: 'none',
+                    opacity: (!novaCidade.estadoId || carregandoMunicipios) ? 0.4 : 1,
+                    cursor: (!novaCidade.estadoId || carregandoMunicipios) ? 'not-allowed' : 'pointer',
+                  }}
+                >
+                  <option value="" disabled hidden>
+                    {carregandoMunicipios ? 'Carregando...' : 'Selecione a cidade'}
+                  </option>
+                  {municipiosIBGE.map((m) => (
+                    <option key={m.id} value={m.nome} style={{ color: '#fff', backgroundColor: '#374C4B' }}>
+                      {m.nome}
+                    </option>
+                  ))}
+                </select>
+              </div>
 
               {/* Prefixo */}
               <div>
@@ -920,7 +967,7 @@ export default function RegioesPage() {
             </div>
 
             <div style={{ display: 'flex', gap: '10px', marginTop: '4px' }}>
-              <button onClick={() => setModalCidade(false)} style={{ ...btnSecundario, flex: 1 }}>
+              <button onClick={() => { setModalCidade(false); setMunicipiosIBGE([]) }} style={{ ...btnSecundario, flex: 1 }}>
                 Cancelar
               </button>
               <button

@@ -10,6 +10,7 @@ import {
   editarRegiaoApi,
   excluirRegiaoApi,
   criarCidadeApi,
+  editarCidadeApi,
 } from '@/lib/api'
 import type { MapaRegioesRef, Ponto, RegiaoMapa } from '@/components/admin/MapaRegioes'
 
@@ -59,6 +60,12 @@ export default function RegioesPage() {
     nome: '', estadoId: '', prefixo: '', latCentro: '', lngCentro: '', zoomPadrao: '13', ativa: true,
   })
   const [salvandoCidade, setSalvandoCidade] = useState(false)
+
+  const [modalEditarCidade, setModalEditarCidade] = useState(false)
+  const [editCidade, setEditCidade] = useState({
+    nome: '', estadoId: '', prefixo: '', latCentro: '', lngCentro: '', zoomPadrao: '13', ativa: true,
+  })
+  const [salvandoEditCidade, setSalvandoEditCidade] = useState(false)
 
   // Carrega estados ao montar
   useEffect(() => {
@@ -296,6 +303,61 @@ export default function RegioesPage() {
     }
   }
 
+  function abrirEditarCidade() {
+    if (!cidadeSel) return
+    setEditCidade({
+      nome: cidadeSel.nome,
+      estadoId: cidadeSel.estadoId,
+      prefixo: '',
+      latCentro: cidadeSel.latCentro.toString(),
+      lngCentro: cidadeSel.lngCentro.toString(),
+      zoomPadrao: cidadeSel.zoomPadrao.toString(),
+      ativa: true,
+    })
+    setModalEditarCidade(true)
+  }
+
+  async function salvarEditarCidade() {
+    if (!cidadeSel) return
+    const prefixo = editCidade.prefixo.trim().toUpperCase()
+    if (!editCidade.nome.trim() || !editCidade.estadoId || prefixo.length !== 3 || !/^[A-Z]{3}$/.test(prefixo)) return
+    const lat = parseFloat(editCidade.latCentro)
+    const lng = parseFloat(editCidade.lngCentro)
+    const zoom = parseInt(editCidade.zoomPadrao)
+    if (isNaN(lat) || isNaN(lng) || isNaN(zoom)) return
+    setSalvandoEditCidade(true)
+    try {
+      const res = await editarCidadeApi(cidadeSel.id, {
+        nome: editCidade.nome.trim(),
+        estadoId: editCidade.estadoId,
+        prefixo,
+        latCentro: lat,
+        lngCentro: lng,
+        zoomPadrao: zoom,
+        ativa: editCidade.ativa,
+      })
+      if (res.ok) {
+        exibirToast('Cidade atualizada!', 'sucesso')
+        setModalEditarCidade(false)
+        // Recarrega cidades e atualiza cidadeSel com os novos dados
+        const r = await getCidadesApi(editCidade.estadoId)
+        if (r.ok) {
+          const lista: Cidade[] = await r.json()
+          setCidades(lista)
+          const atualizada = lista.find((c) => c.id === cidadeSel.id) ?? null
+          setCidadeSel(atualizada)
+        }
+      } else {
+        const err = await res.json().catch(() => null)
+        exibirToast(err?.message ?? 'Erro ao atualizar cidade.', 'erro')
+      }
+    } catch {
+      exibirToast('Erro de conexão.', 'erro')
+    } finally {
+      setSalvandoEditCidade(false)
+    }
+  }
+
   const podeDesenhar = !!cidadeSel
   const podeSalvar = pontos.length >= 3 && nomeNova.trim().length > 0
 
@@ -372,6 +434,24 @@ export default function RegioesPage() {
           >
             + Cadastrar cidade
           </button>
+          {cidadeSel && (
+            <button
+              onClick={abrirEditarCidade}
+              style={{
+                backgroundColor: 'rgba(64,166,244,0.12)',
+                color: '#40A6F4',
+                border: '1px solid rgba(64,166,244,0.25)',
+                borderRadius: '8px',
+                padding: '8px 14px',
+                fontSize: '13px',
+                fontWeight: 700,
+                cursor: 'pointer',
+                whiteSpace: 'nowrap',
+              }}
+            >
+              ✎ Editar cidade
+            </button>
+          )}
         </div>
 
         {/* Toggle painel mobile */}
@@ -862,6 +942,149 @@ export default function RegioesPage() {
                 style={btnPrimario(salvandoCidade)}
               >
                 {salvandoCidade ? 'Salvando...' : 'Cadastrar'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal editar cidade */}
+      {modalEditarCidade && cidadeSel && (
+        <div
+          onClick={() => setModalEditarCidade(false)}
+          style={{
+            position: 'fixed', inset: 0, zIndex: 2000,
+            backgroundColor: 'rgba(0,0,0,0.6)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+          }}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              backgroundColor: 'var(--color-green-dark)',
+              border: '1px solid rgba(255,255,255,0.1)',
+              borderRadius: '14px',
+              padding: '28px',
+              width: '100%',
+              maxWidth: '420px',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '16px',
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <p style={{ color: 'var(--color-white)', fontSize: '15px', fontWeight: 800, margin: 0 }}>
+                Editar cidade
+              </p>
+              <button
+                onClick={() => setModalEditarCidade(false)}
+                style={{ background: 'none', border: 'none', color: 'rgba(255,255,255,0.4)', fontSize: '18px', cursor: 'pointer', lineHeight: 1 }}
+              >
+                ✕
+              </button>
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              {/* Estado */}
+              <div>
+                <label style={{ display: 'block', color: 'var(--color-white)', fontSize: '13px', fontWeight: 700, marginBottom: '6px' }}>
+                  Estado
+                </label>
+                <select
+                  value={editCidade.estadoId}
+                  onChange={(e) => setEditCidade((p) => ({ ...p, estadoId: e.target.value }))}
+                  style={{
+                    width: '100%', boxSizing: 'border-box',
+                    backgroundColor: 'var(--color-green-mid)',
+                    color: editCidade.estadoId ? 'var(--color-white)' : 'rgba(255,255,255,0.4)',
+                    border: '1px solid rgba(255,255,255,0.1)',
+                    borderRadius: '8px', padding: '9px 12px',
+                    fontSize: '13px', fontWeight: 700, outline: 'none',
+                  }}
+                >
+                  <option value="" disabled hidden>Selecione o estado</option>
+                  {estados.map((e) => (
+                    <option key={e.id} value={e.id} style={{ color: '#fff', backgroundColor: '#374C4B' }}>
+                      {e.nome}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Nome */}
+              <CampoModal
+                label="Nome da cidade"
+                placeholder="Ex: Votuporanga"
+                value={editCidade.nome}
+                onChange={(v) => setEditCidade((p) => ({ ...p, nome: v }))}
+              />
+
+              {/* Prefixo */}
+              <div>
+                <label style={{ display: 'block', color: 'var(--color-white)', fontSize: '13px', fontWeight: 700, marginBottom: '6px' }}>
+                  Prefixo <span style={{ color: 'rgba(255,255,255,0.35)', fontWeight: 400, fontSize: '11px' }}>(3 letras maiúsculas — ex: VTG)</span>
+                </label>
+                <input
+                  type="text"
+                  maxLength={3}
+                  placeholder="VTG"
+                  value={editCidade.prefixo}
+                  onChange={(e) => setEditCidade((p) => ({ ...p, prefixo: e.target.value.toUpperCase().replace(/[^A-Z]/g, '') }))}
+                  style={estiloInputModal}
+                  onFocus={(e) => (e.currentTarget.style.borderColor = 'var(--color-blue)')}
+                  onBlur={(e) => (e.currentTarget.style.borderColor = 'rgba(255,255,255,0.1)')}
+                />
+              </div>
+
+              {/* Lat / Lng */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+                <CampoModal
+                  label="Latitude centro"
+                  placeholder="-20.4237"
+                  value={editCidade.latCentro}
+                  onChange={(v) => setEditCidade((p) => ({ ...p, latCentro: v }))}
+                  type="number"
+                />
+                <CampoModal
+                  label="Longitude centro"
+                  placeholder="-49.9781"
+                  value={editCidade.lngCentro}
+                  onChange={(v) => setEditCidade((p) => ({ ...p, lngCentro: v }))}
+                  type="number"
+                />
+              </div>
+
+              {/* Zoom */}
+              <CampoModal
+                label="Zoom padrão"
+                placeholder="13"
+                value={editCidade.zoomPadrao}
+                onChange={(v) => setEditCidade((p) => ({ ...p, zoomPadrao: v }))}
+                type="number"
+              />
+
+              {/* Ativa */}
+              <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
+                <input
+                  type="checkbox"
+                  checked={editCidade.ativa}
+                  onChange={(e) => setEditCidade((p) => ({ ...p, ativa: e.target.checked }))}
+                  style={{ accentColor: 'var(--color-blue)', width: '15px', height: '15px' }}
+                />
+                <span style={{ color: 'var(--color-white)', fontSize: '13px', fontWeight: 700 }}>Cidade ativa</span>
+              </label>
+            </div>
+
+            <div style={{ display: 'flex', gap: '10px', marginTop: '4px' }}>
+              <button onClick={() => setModalEditarCidade(false)} style={{ ...btnSecundario, flex: 1 }}>
+                Cancelar
+              </button>
+              <button
+                onClick={salvarEditarCidade}
+                disabled={salvandoEditCidade}
+                style={btnPrimario(salvandoEditCidade)}
+              >
+                {salvandoEditCidade ? 'Salvando...' : 'Salvar'}
               </button>
             </div>
           </div>

@@ -60,6 +60,24 @@ export async function criarCidadeApi(dados: {
   return res
 }
 
+export async function editarCidadeApi(id: number, dados: {
+  nome: string
+  estadoId: string
+  prefixo: string
+  latCentro: number
+  lngCentro: number
+  zoomPadrao: number
+  ativa: boolean
+}) {
+  const res = await fetch(`${API_URL}/api/admin/cidades/${id}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    credentials: 'include',
+    body: JSON.stringify(dados),
+  })
+  return res
+}
+
 export async function criarRegiaoApi(dados: {
   nome: string
   cidadeId: number

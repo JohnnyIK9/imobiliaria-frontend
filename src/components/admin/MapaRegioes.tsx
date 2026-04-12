@@ -86,7 +86,7 @@ const MapaRegioes = forwardRef<MapaRegioesRef, Props>(function MapaRegioes(
         const { lat, lng } = e.latlng
         pontosDesenho.current.push([lat, lng])
         atualizarDesenho(map, L)
-        onDesenhoAtualizado?.(pontosDesenho.current)
+        onDesenhoAtualizado?.([...pontosDesenho.current])
       })
 
       map.on('dblclick', () => {

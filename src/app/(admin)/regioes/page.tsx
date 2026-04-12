@@ -46,15 +46,8 @@ export default function RegioesPage() {
   const [cidades, setCidades] = useState<Cidade[]>([])
   const [regioes, setRegioes] = useState<Regiao[]>([])
 
-  const [estadoSel, setEstadoSel] = useState(() =>
-    typeof window !== 'undefined' ? localStorage.getItem('regioes:estado') ?? '' : ''
-  )
+  const [estadoSel, setEstadoSel] = useState('')
   const [cidadeSel, setCidadeSel] = useState<Cidade | null>(null)
-  const cidadeIdSalva = useRef<number | null>(
-    typeof window !== 'undefined'
-      ? Number(localStorage.getItem('regioes:cidadeId')) || null
-      : null
-  )
 
   const [desenhando, setDesenhando] = useState(false)
   const [desenhoFinalizado, setDesenhoFinalizado] = useState(false)
@@ -82,64 +75,110 @@ export default function RegioesPage() {
   })
   const [salvandoEditCidade, setSalvandoEditCidade] = useState(false)
 
-  // Carrega estados ao montar
+  // Refs para que callbacks do mapa sempre leiam os valores mais recentes
+  const cidadeSelRef = useRef<Cidade | null>(null)
+  const regioesRef = useRef<Regiao[]>([])
+  const mapaReadyRef = useRef(false)
+
+  useEffect(() => { cidadeSelRef.current = cidadeSel }, [cidadeSel])
+  useEffect(() => { regioesRef.current = regioes }, [regioes])
+
+  // ── Inicialização sequencial ──────────────────────────────
+  // 1. Carrega estados
+  // 2. Lê cookie e carrega cidades do estado salvo
+  // 3. Restaura cidade salva
+  // 4. Carrega regiões da cidade
+  // (mover mapa e renderizar regiões acontece em handleMapaReady ou aqui se mapa já estiver pronto)
   useEffect(() => {
-    getEstadosApi().then(async (r) => {
-      if (r.ok) setEstados(await r.json())
-    })
+    async function init() {
+      // 1. Estados
+      const rEstados = await getEstadosApi()
+      if (!rEstados.ok) return
+      const listaEstados: Estado[] = await rEstados.json()
+      setEstados(listaEstados)
+
+      // 2. Cookie
+      const estadoSalvo = localStorage.getItem('regioes:estado') ?? ''
+      const cidadeIdSalvo = Number(localStorage.getItem('regioes:cidadeId')) || null
+      if (!estadoSalvo) return
+
+      setEstadoSel(estadoSalvo)
+
+      // 3. Cidades do estado salvo
+      const rCidades = await getCidadesApi(estadoSalvo)
+      if (!rCidades.ok) return
+      const listaCidades: Cidade[] = (await rCidades.json()).map(normalizarCidade)
+      setCidades(listaCidades)
+
+      if (!cidadeIdSalvo) return
+      const cidade = listaCidades.find((c) => c.id === cidadeIdSalvo)
+      if (!cidade) return
+
+      setCidadeSel(cidade)
+      cidadeSelRef.current = cidade
+
+      // 4. Regiões da cidade
+      const rRegioes = await getRegioesPorCidadeApi(cidade.id)
+      if (!rRegioes.ok) return
+      const listaRegioes: Regiao[] = await rRegioes.json()
+      setRegioes(listaRegioes)
+      regioesRef.current = listaRegioes
+
+      // 5. Se o mapa já estiver pronto, move e renderiza agora
+      if (mapaReadyRef.current) {
+        aplicarCidadeNoMapa(cidade, listaRegioes)
+      }
+      // Caso contrário, handleMapaReady vai usar os refs quando o mapa terminar de carregar
+    }
+
+    init()
   }, [])
 
-  // Persiste estado selecionado
-  useEffect(() => {
-    if (estadoSel) localStorage.setItem('regioes:estado', estadoSel)
-  }, [estadoSel])
+  function aplicarCidadeNoMapa(cidade: Cidade, listaRegioes: Regiao[]) {
+    mapaRef.current?.moverParaCidade(cidade.latCentro, cidade.lngCentro, cidade.zoomPadrao)
+    const mapped: RegiaoMapa[] = listaRegioes.map((r) => ({
+      id: r.id,
+      nome: r.nome,
+      coordenadas: JSON.parse(r.coordenadas || '[]'),
+    }))
+    mapaRef.current?.renderizarRegioes(mapped, null)
+  }
 
-  // Carrega cidades ao trocar estado e restaura cidade salva
+  // Chamado pelo mapa quando termina de inicializar
+  function handleMapaReady() {
+    mapaReadyRef.current = true
+    setMapaCarregado(true)
+    // Usa refs para pegar os valores mais recentes (init pode ter terminado antes ou depois)
+    const cidade = cidadeSelRef.current
+    const listaRegioes = regioesRef.current
+    if (cidade) {
+      aplicarCidadeNoMapa(cidade, listaRegioes)
+    }
+  }
+
+  // Quando o usuário muda o estado manualmente no filtro
+  const initDone = useRef(false)
   useEffect(() => {
+    // Ignora o primeiro disparo — a inicialização sequencial já cuida disso
+    if (!initDone.current) { initDone.current = true; return }
     if (!estadoSel) { setCidades([]); setCidadeSel(null); return }
+    localStorage.setItem('regioes:estado', estadoSel)
     getCidadesApi(estadoSel).then(async (r) => {
-      if (r.ok) {
-        const lista: Cidade[] = (await r.json()).map(normalizarCidade)
-        setCidades(lista)
-        // Restaura última cidade se pertencer ao estado atual
-        if (cidadeIdSalva.current) {
-          const anterior = lista.find((c) => c.id === cidadeIdSalva.current)
-          if (anterior) setCidadeSel(anterior)
-        }
-      } else {
-        setCidades([])
-      }
+      if (r.ok) setCidades((await r.json()).map(normalizarCidade))
+      else setCidades([])
     })
+    setCidadeSel(null)
   }, [estadoSel])
 
-  // Carrega regiões ao trocar cidade e move o mapa
+  // Quando o usuário muda de cidade manualmente no filtro
   useEffect(() => {
     if (!cidadeSel) { setRegioes([]); return }
-    // Se o mapa já estiver pronto, move imediatamente
-    if (mapaRef.current) {
-      mapaRef.current.moverParaCidade(cidadeSel.latCentro, cidadeSel.lngCentro, cidadeSel.zoomPadrao)
+    localStorage.setItem('regioes:cidadeId', cidadeSel.id.toString())
+    if (mapaReadyRef.current) {
+      mapaRef.current?.moverParaCidade(cidadeSel.latCentro, cidadeSel.lngCentro, cidadeSel.zoomPadrao)
     }
-    // Se não, onReady vai chamar quando o mapa inicializar
     carregarRegioes(cidadeSel.id)
   }, [cidadeSel])
-
-  function handleMapaReady() {
-    setTimeout(() => {
-      if (cidadeSel) {
-        mapaRef.current?.moverParaCidade(cidadeSel.latCentro, cidadeSel.lngCentro, cidadeSel.zoomPadrao)
-      }
-      // Renderiza regiões que já foram carregadas enquanto o mapa inicializava
-      if (regioes.length > 0) {
-        const mapped: RegiaoMapa[] = regioes.map((r) => ({
-          id: r.id,
-          nome: r.nome,
-          coordenadas: JSON.parse(r.coordenadas || '[]'),
-        }))
-        mapaRef.current?.renderizarRegioes(mapped, null)
-      }
-      setMapaCarregado(true)
-    }, 1000)
-  }
 
   // Atualiza polígonos no mapa quando regiões mudam (só após o mapa estar pronto)
   useEffect(() => {
@@ -390,6 +429,7 @@ export default function RegioesPage() {
 
   const podeDesenhar = !!cidadeSel
   const podeSalvar = pontos.length >= 3 && nomeNova.trim().length > 0
+  const desenhoAtivo = pontos.length >= 3
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
@@ -438,10 +478,6 @@ export default function RegioesPage() {
             onChange={(v) => {
               const c = cidades.find((c) => c.id.toString() === v) ?? null
               setCidadeSel(c)
-              if (c) {
-                cidadeIdSalva.current = c.id
-                localStorage.setItem('regioes:cidadeId', c.id.toString())
-              }
             }}
             placeholder="Selecione a cidade"
             options={cidades.map((c) => ({ value: c.id.toString(), label: c.nome }))}
@@ -707,14 +743,6 @@ export default function RegioesPage() {
                 )}
 
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                  <Campo
-                    label="Nome da região"
-                    placeholder="Ex: Zona Norte"
-                    value={nomeNova}
-                    onChange={setNomeNova}
-                    disabled={!podeDesenhar}
-                  />
-
                   <div style={{ display: 'flex', gap: '8px' }}>
                     <button
                       onClick={toggleDesenho}
@@ -744,6 +772,15 @@ export default function RegioesPage() {
                       </button>
                     )}
                   </div>
+
+                  {desenhoAtivo && (
+                    <Campo
+                      label="Nome da região"
+                      placeholder="Ex: Zona Norte"
+                      value={nomeNova}
+                      onChange={setNomeNova}
+                    />
+                  )}
 
                   <button
                     onClick={salvarNovaRegiao}

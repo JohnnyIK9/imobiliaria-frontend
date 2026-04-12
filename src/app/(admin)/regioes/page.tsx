@@ -1019,6 +1019,15 @@ export default function RegioesPage() {
             </div>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              {/* Campos somente leitura */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+                <CampoLeitura label="Estado" value={estados.find((e) => e.id === cidadeSel.estadoId)?.nome ?? cidadeSel.estadoId} />
+                <CampoLeitura label="Sigla" value={cidadeSel.prefixo} />
+              </div>
+              <CampoLeitura label="Cidade" value={cidadeSel.nome} />
+
+              <div style={{ height: '1px', backgroundColor: 'rgba(255,255,255,0.06)' }} />
+
               {/* Lat / Lng */}
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
                 <CampoModal
@@ -1219,6 +1228,28 @@ function CampoModal({
         onFocus={(e) => (e.currentTarget.style.borderColor = 'var(--color-blue)')}
         onBlur={(e) => (e.currentTarget.style.borderColor = 'rgba(255,255,255,0.1)')}
       />
+    </div>
+  )
+}
+
+function CampoLeitura({ label, value }: { label: string; value: string }) {
+  return (
+    <div>
+      <label style={{ display: 'block', color: 'var(--color-gray-dark)', fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '4px' }}>
+        {label}
+      </label>
+      <p style={{
+        margin: 0,
+        backgroundColor: 'rgba(255,255,255,0.04)',
+        border: '1px solid rgba(255,255,255,0.07)',
+        borderRadius: '8px',
+        padding: '9px 12px',
+        fontSize: '13px',
+        fontWeight: 700,
+        color: 'var(--color-white)',
+      }}>
+        {value}
+      </p>
     </div>
   )
 }

@@ -118,25 +118,30 @@ function AdminShell({ usuario, children }: { usuario: { nome: string; papel: str
 
         {/* Usuário + Sair */}
         <div className="px-4 py-4 border-t space-y-3" style={{ borderColor: 'rgba(255,255,255,0.08)' }}>
-          <div className="flex items-center gap-3">
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
             <div
-              className="w-8 h-8 rounded-full flex-shrink-0 text-xs font-bold"
               style={{
+                width: '32px',
+                height: '32px',
+                borderRadius: '50%',
+                flexShrink: 0,
                 backgroundColor: 'var(--color-blue)',
                 color: '#fff',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                lineHeight: '1',
+                fontSize: '12px',
+                fontWeight: 700,
+                lineHeight: 1,
               }}
             >
               {usuario.nome.charAt(0).toUpperCase()}
             </div>
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <p className="text-sm font-bold truncate" style={{ color: 'var(--color-white)', lineHeight: '1.3' }}>
+            <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+              <p style={{ color: 'var(--color-white)', fontSize: '14px', fontWeight: 700, margin: 0, lineHeight: '1.2', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                 {usuario.nome}
               </p>
-              <p className="text-xs font-light" style={{ color: 'var(--color-gray-dark)', lineHeight: '1.3' }}>
+              <p style={{ color: 'var(--color-gray-dark)', fontSize: '12px', fontWeight: 300, margin: 0, lineHeight: '1.2' }}>
                 {usuario.papel === 'adm' ? 'Administrador' : 'Editor'}
               </p>
             </div>

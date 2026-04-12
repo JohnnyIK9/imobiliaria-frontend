@@ -24,6 +24,60 @@ export async function getStatsApi() {
   return res
 }
 
+export async function getEstadosApi() {
+  const res = await fetch(`${API_URL}/api/estados`, { credentials: 'include' })
+  return res
+}
+
+export async function getCidadesApi(estadoId?: string) {
+  const url = estadoId
+    ? `${API_URL}/api/admin/cidades?estadoId=${estadoId}`
+    : `${API_URL}/api/admin/cidades`
+  const res = await fetch(url, { credentials: 'include' })
+  return res
+}
+
+export async function getRegioesPorCidadeApi(cidadeId: number) {
+  const res = await fetch(`${API_URL}/api/admin/cidades/${cidadeId}/regioes`, { credentials: 'include' })
+  return res
+}
+
+export async function criarRegiaoApi(dados: {
+  nome: string
+  cidadeId: number
+  coordenadas: string
+}) {
+  const res = await fetch(`${API_URL}/api/admin/regioes`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    credentials: 'include',
+    body: JSON.stringify(dados),
+  })
+  return res
+}
+
+export async function editarRegiaoApi(id: number, dados: {
+  nome: string
+  cidadeId: number
+  coordenadas: string
+}) {
+  const res = await fetch(`${API_URL}/api/admin/regioes/${id}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    credentials: 'include',
+    body: JSON.stringify(dados),
+  })
+  return res
+}
+
+export async function excluirRegiaoApi(id: number) {
+  const res = await fetch(`${API_URL}/api/admin/regioes/${id}`, {
+    method: 'DELETE',
+    credentials: 'include',
+  })
+  return res
+}
+
 export async function logoutApi() {
   const res = await fetch(`${API_URL}/api/auth/logout`, {
     method: 'POST',

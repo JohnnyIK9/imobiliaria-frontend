@@ -359,7 +359,7 @@ export default function RegioesPage() {
     try {
       const res = await editarCidadeApi(cidadeSel.id, {
         nome: cidadeSel.nome,
-        estadoId: cidadeSel.estadoId,
+        estadoId: estadoSel,
         prefixo: editCidade.prefixo,
         latCentro: lat,
         lngCentro: lng,

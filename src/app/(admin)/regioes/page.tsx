@@ -17,7 +17,7 @@ import type { MapaRegioesRef, Ponto, RegiaoMapa } from '@/components/admin/MapaR
 const MapaRegioes = dynamic(() => import('@/components/admin/MapaRegioes'), { ssr: false })
 
 type Estado = { id: string; nome: string }
-type Cidade = { id: number; nome: string; estadoId: string; latCentro: number; lngCentro: number; zoomPadrao: number }
+type Cidade = { id: number; nome: string; estadoId: string; prefixo: string; latCentro: number; lngCentro: number; zoomPadrao: number }
 type Regiao = { id: number; nome: string; coordenadas: string }
 
 type ModoEdicao = {
@@ -280,7 +280,7 @@ export default function RegioesPage() {
         latCentro: lat,
         lngCentro: lng,
         zoomPadrao: zoom,
-        ativa: novaCidade.ativa,
+        ativa: true,
       })
       if (res.ok) {
         exibirToast('Cidade cadastrada!', 'sucesso')
@@ -308,7 +308,7 @@ export default function RegioesPage() {
     setEditCidade({
       nome: cidadeSel.nome,
       estadoId: cidadeSel.estadoId,
-      prefixo: '',
+      prefixo: cidadeSel.prefixo,
       latCentro: cidadeSel.latCentro.toString(),
       lngCentro: cidadeSel.lngCentro.toString(),
       zoomPadrao: cidadeSel.zoomPadrao.toString(),
@@ -319,8 +319,6 @@ export default function RegioesPage() {
 
   async function salvarEditarCidade() {
     if (!cidadeSel) return
-    const prefixo = editCidade.prefixo.trim().toUpperCase()
-    if (!editCidade.nome.trim() || !editCidade.estadoId || prefixo.length !== 3 || !/^[A-Z]{3}$/.test(prefixo)) return
     const lat = parseFloat(editCidade.latCentro)
     const lng = parseFloat(editCidade.lngCentro)
     const zoom = parseInt(editCidade.zoomPadrao)
@@ -328,13 +326,13 @@ export default function RegioesPage() {
     setSalvandoEditCidade(true)
     try {
       const res = await editarCidadeApi(cidadeSel.id, {
-        nome: editCidade.nome.trim(),
-        estadoId: editCidade.estadoId,
-        prefixo,
+        nome: cidadeSel.nome,
+        estadoId: cidadeSel.estadoId,
+        prefixo: editCidade.prefixo,
         latCentro: lat,
         lngCentro: lng,
         zoomPadrao: zoom,
-        ativa: editCidade.ativa,
+        ativa: true,
       })
       if (res.ok) {
         exibirToast('Cidade atualizada!', 'sucesso')
@@ -919,17 +917,6 @@ export default function RegioesPage() {
                 onChange={(v) => setNovaCidade((p) => ({ ...p, zoomPadrao: v }))}
                 type="number"
               />
-
-              {/* Ativa */}
-              <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
-                <input
-                  type="checkbox"
-                  checked={novaCidade.ativa}
-                  onChange={(e) => setNovaCidade((p) => ({ ...p, ativa: e.target.checked }))}
-                  style={{ accentColor: 'var(--color-blue)', width: '15px', height: '15px' }}
-                />
-                <span style={{ color: 'var(--color-white)', fontSize: '13px', fontWeight: 700 }}>Cidade ativa</span>
-              </label>
             </div>
 
             <div style={{ display: 'flex', gap: '10px', marginTop: '4px' }}>
@@ -985,57 +972,6 @@ export default function RegioesPage() {
             </div>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-              {/* Estado */}
-              <div>
-                <label style={{ display: 'block', color: 'var(--color-white)', fontSize: '13px', fontWeight: 700, marginBottom: '6px' }}>
-                  Estado
-                </label>
-                <select
-                  value={editCidade.estadoId}
-                  onChange={(e) => setEditCidade((p) => ({ ...p, estadoId: e.target.value }))}
-                  style={{
-                    width: '100%', boxSizing: 'border-box',
-                    backgroundColor: 'var(--color-green-mid)',
-                    color: editCidade.estadoId ? 'var(--color-white)' : 'rgba(255,255,255,0.4)',
-                    border: '1px solid rgba(255,255,255,0.1)',
-                    borderRadius: '8px', padding: '9px 12px',
-                    fontSize: '13px', fontWeight: 700, outline: 'none',
-                  }}
-                >
-                  <option value="" disabled hidden>Selecione o estado</option>
-                  {estados.map((e) => (
-                    <option key={e.id} value={e.id} style={{ color: '#fff', backgroundColor: '#374C4B' }}>
-                      {e.nome}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              {/* Nome */}
-              <CampoModal
-                label="Nome da cidade"
-                placeholder="Ex: Votuporanga"
-                value={editCidade.nome}
-                onChange={(v) => setEditCidade((p) => ({ ...p, nome: v }))}
-              />
-
-              {/* Prefixo */}
-              <div>
-                <label style={{ display: 'block', color: 'var(--color-white)', fontSize: '13px', fontWeight: 700, marginBottom: '6px' }}>
-                  Prefixo <span style={{ color: 'rgba(255,255,255,0.35)', fontWeight: 400, fontSize: '11px' }}>(3 letras maiúsculas — ex: VTG)</span>
-                </label>
-                <input
-                  type="text"
-                  maxLength={3}
-                  placeholder="VTG"
-                  value={editCidade.prefixo}
-                  onChange={(e) => setEditCidade((p) => ({ ...p, prefixo: e.target.value.toUpperCase().replace(/[^A-Z]/g, '') }))}
-                  style={estiloInputModal}
-                  onFocus={(e) => (e.currentTarget.style.borderColor = 'var(--color-blue)')}
-                  onBlur={(e) => (e.currentTarget.style.borderColor = 'rgba(255,255,255,0.1)')}
-                />
-              </div>
-
               {/* Lat / Lng */}
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
                 <CampoModal
@@ -1062,17 +998,6 @@ export default function RegioesPage() {
                 onChange={(v) => setEditCidade((p) => ({ ...p, zoomPadrao: v }))}
                 type="number"
               />
-
-              {/* Ativa */}
-              <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
-                <input
-                  type="checkbox"
-                  checked={editCidade.ativa}
-                  onChange={(e) => setEditCidade((p) => ({ ...p, ativa: e.target.checked }))}
-                  style={{ accentColor: 'var(--color-blue)', width: '15px', height: '15px' }}
-                />
-                <span style={{ color: 'var(--color-white)', fontSize: '13px', fontWeight: 700 }}>Cidade ativa</span>
-              </label>
             </div>
 
             <div style={{ display: 'flex', gap: '10px', marginTop: '4px' }}>

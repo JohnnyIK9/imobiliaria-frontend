@@ -1,0 +1,19 @@
+@import url('https://fonts.googleapis.com/css2?family=Lato:wght@300;400;700;800&display=swap');
+@import "tailwindcss";
+
+:root {
+  --color-black:        #1D1E20;
+  --color-white:        #FFFFFF;
+  --color-green-mid:    #374C4B;
+  --color-green-dark:   #2D4839;
+  --color-blue:         #40A6F4;
+  --color-green-deeper: #22342A;
+  --color-gray-dark:    #393C40;
+  --color-green-wa:     #25D366;
+}
+
+body {
+  background: var(--color-black);
+  color: var(--color-white);
+  font-family: 'Lato', sans-serif;
+}

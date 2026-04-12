@@ -22,6 +22,7 @@ type ModoEdicao = {
   regiao: Regiao
   pontos: Ponto[]
   nomeEdit: string
+  pontoSelecionado: number | null
 }
 
 export default function RegioesPage() {
@@ -42,6 +43,7 @@ export default function RegioesPage() {
   )
 
   const [desenhando, setDesenhando] = useState(false)
+  const [desenhoFinalizado, setDesenhoFinalizado] = useState(false)
   const [pontos, setPontos] = useState<Ponto[]>([])
   const [nomeNova, setNomeNova] = useState('')
 
@@ -98,12 +100,23 @@ export default function RegioesPage() {
       if (cidadeSel) {
         mapaRef.current?.moverParaCidade(cidadeSel.latCentro, cidadeSel.lngCentro, cidadeSel.zoomPadrao)
       }
+      // Renderiza regiões que já foram carregadas enquanto o mapa inicializava
+      if (regioes.length > 0) {
+        const mapped: RegiaoMapa[] = regioes.map((r) => ({
+          id: r.id,
+          nome: r.nome,
+          coordenadas: JSON.parse(r.coordenadas || '[]'),
+          totalImoveis: r.totalImoveis,
+        }))
+        mapaRef.current?.renderizarRegioes(mapped, null)
+      }
       setMapaCarregado(true)
     }, 1000)
   }
 
-  // Atualiza polígonos no mapa quando regiões mudam
+  // Atualiza polígonos no mapa quando regiões mudam (só após o mapa estar pronto)
   useEffect(() => {
+    if (!mapaCarregado) return
     const mapped: RegiaoMapa[] = regioes.map((r) => ({
       id: r.id,
       nome: r.nome,
@@ -111,7 +124,7 @@ export default function RegioesPage() {
       totalImoveis: r.totalImoveis,
     }))
     mapaRef.current?.renderizarRegioes(mapped, modoEdicao?.regiao.id ?? null)
-  }, [regioes, modoEdicao])
+  }, [regioes, modoEdicao, mapaCarregado])
 
   async function carregarRegioes(cidadeId: number) {
     const r = await getRegioesPorCidadeApi(cidadeId)
@@ -131,13 +144,20 @@ export default function RegioesPage() {
     } else {
       mapaRef.current?.ativarDesenho()
       setDesenhando(true)
+      setDesenhoFinalizado(false)
     }
+  }
+
+  function handleDesenhoFinalizado() {
+    setDesenhando(false)
+    setDesenhoFinalizado(true)
   }
 
   function limparDesenho() {
     mapaRef.current?.limparDesenho()
     setPontos([])
     setDesenhando(false)
+    setDesenhoFinalizado(false)
     setNomeNova('')
   }
 
@@ -167,10 +187,12 @@ export default function RegioesPage() {
   // ── Edição ─────────────────────────────────────────────
   function iniciarEdicao(r: Regiao) {
     const pts: Ponto[] = JSON.parse(r.coordenadas || '[]')
-    setModoEdicao({ regiao: r, pontos: pts, nomeEdit: r.nome })
-    mapaRef.current?.ativarEdicao(pts, (novos) => {
-      setModoEdicao((prev) => prev ? { ...prev, pontos: novos } : null)
-    })
+    setModoEdicao({ regiao: r, pontos: pts, nomeEdit: r.nome, pontoSelecionado: null })
+    mapaRef.current?.ativarEdicao(
+      pts,
+      (novos) => setModoEdicao((prev) => prev ? { ...prev, pontos: novos } : null),
+      (i) => setModoEdicao((prev) => prev ? { ...prev, pontoSelecionado: i } : null),
+    )
   }
 
   function cancelarEdicao() {
@@ -319,6 +341,7 @@ export default function RegioesPage() {
           <MapaRegioes
             ref={mapaRef}
             onDesenhoAtualizado={setPontos}
+            onDesenhoFinalizado={handleDesenhoFinalizado}
             onReady={handleMapaReady}
           />
 
@@ -382,6 +405,7 @@ export default function RegioesPage() {
           style={{
             width: '340px',
             flexShrink: 0,
+            height: '100%',
             backgroundColor: 'var(--color-green-dark)',
             borderLeft: '1px solid rgba(255,255,255,0.08)',
             display: painelAberto ? 'flex' : 'none',
@@ -391,19 +415,113 @@ export default function RegioesPage() {
         >
           {/* ── Modo edição ── */}
           {modoEdicao ? (
-            <div style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: '14px' }}>
-              <p style={{ color: 'var(--color-white)', fontSize: '14px', fontWeight: 800, margin: 0 }}>
-                Editando região
-              </p>
-              <Campo
-                label="Nome"
-                value={modoEdicao.nomeEdit}
-                onChange={(v) => setModoEdicao({ ...modoEdicao, nomeEdit: v })}
-              />
-              <p style={{ color: 'var(--color-gray-dark)', fontSize: '12px', margin: 0 }}>
-                {modoEdicao.pontos.length} pontos — arraste os marcadores no mapa para ajustar.
-              </p>
-              <div style={{ display: 'flex', gap: '8px' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
+              {/* Header */}
+              <div style={{ padding: '16px 20px', borderBottom: '1px solid rgba(255,255,255,0.08)', flexShrink: 0 }}>
+                <p style={{ color: 'var(--color-white)', fontSize: '14px', fontWeight: 800, margin: '0 0 12px 0' }}>
+                  Editando: {modoEdicao.regiao.nome}
+                </p>
+                <Campo
+                  label="Nome"
+                  value={modoEdicao.nomeEdit}
+                  onChange={(v) => setModoEdicao({ ...modoEdicao, nomeEdit: v })}
+                />
+                <p style={{ color: 'var(--color-gray-dark)', fontSize: '11px', margin: '10px 0 0 0' }}>
+                  Clique num marcador para selecioná-lo (fica vermelho) e edite as coordenadas abaixo.
+                </p>
+              </div>
+
+              {/* Lista de pontos */}
+              <div style={{ flex: 1, overflowY: 'auto', padding: '12px 20px' }}>
+                <p style={{ color: 'var(--color-gray-dark)', fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', margin: '0 0 8px 0' }}>
+                  Pontos ({modoEdicao.pontos.length})
+                </p>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                  {modoEdicao.pontos.map((p, i) => {
+                    const selecionado = modoEdicao.pontoSelecionado === i
+                    return (
+                      <div
+                        key={i}
+                        onClick={() => {
+                          setModoEdicao((prev) => prev ? { ...prev, pontoSelecionado: i } : null)
+                          mapaRef.current?.selecionarPontoEdicao(i)
+                        }}
+                        style={{
+                          backgroundColor: selecionado ? 'rgba(248,113,113,0.12)' : 'var(--color-green-mid)',
+                          border: `1px solid ${selecionado ? 'rgba(248,113,113,0.4)' : 'transparent'}`,
+                          borderRadius: '8px',
+                          padding: '8px 10px',
+                          cursor: 'pointer',
+                        }}
+                      >
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '6px' }}>
+                          <span style={{ color: selecionado ? '#F87171' : 'rgba(255,255,255,0.5)', fontSize: '11px', fontWeight: 700 }}>
+                            Ponto {i + 1}
+                          </span>
+                          {modoEdicao.pontos.length > 3 && (
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                mapaRef.current?.excluirPontoEdicao(i)
+                              }}
+                              style={{ background: 'none', border: 'none', color: '#F87171', fontSize: '12px', cursor: 'pointer', padding: '0 2px' }}
+                            >
+                              ✕
+                            </button>
+                          )}
+                        </div>
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px' }}>
+                          <div>
+                            <label style={{ color: 'var(--color-gray-dark)', fontSize: '10px', display: 'block', marginBottom: '2px' }}>Lat</label>
+                            <input
+                              type="number"
+                              step="any"
+                              value={p[0].toFixed(6)}
+                              onClick={(e) => e.stopPropagation()}
+                              onChange={(e) => {
+                                const lat = parseFloat(e.target.value)
+                                if (!isNaN(lat)) mapaRef.current?.atualizarPontoEdicao(i, lat, p[1])
+                              }}
+                              style={{
+                                width: '100%', boxSizing: 'border-box',
+                                backgroundColor: 'var(--color-green-dark)',
+                                color: 'var(--color-white)',
+                                border: '1px solid rgba(255,255,255,0.1)',
+                                borderRadius: '4px', padding: '4px 6px',
+                                fontSize: '11px', outline: 'none',
+                              }}
+                            />
+                          </div>
+                          <div>
+                            <label style={{ color: 'var(--color-gray-dark)', fontSize: '10px', display: 'block', marginBottom: '2px' }}>Lng</label>
+                            <input
+                              type="number"
+                              step="any"
+                              value={p[1].toFixed(6)}
+                              onClick={(e) => e.stopPropagation()}
+                              onChange={(e) => {
+                                const lng = parseFloat(e.target.value)
+                                if (!isNaN(lng)) mapaRef.current?.atualizarPontoEdicao(i, p[0], lng)
+                              }}
+                              style={{
+                                width: '100%', boxSizing: 'border-box',
+                                backgroundColor: 'var(--color-green-dark)',
+                                color: 'var(--color-white)',
+                                border: '1px solid rgba(255,255,255,0.1)',
+                                borderRadius: '4px', padding: '4px 6px',
+                                fontSize: '11px', outline: 'none',
+                              }}
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              </div>
+
+              {/* Botões */}
+              <div style={{ padding: '12px 20px', borderTop: '1px solid rgba(255,255,255,0.08)', display: 'flex', gap: '8px', flexShrink: 0 }}>
                 <button onClick={cancelarEdicao} style={btnSecundario}>Cancelar</button>
                 <button onClick={salvarEdicao} disabled={salvando} style={btnPrimario(salvando)}>
                   {salvando ? 'Salvando...' : 'Salvar'}
@@ -446,12 +564,16 @@ export default function RegioesPage() {
                         fontSize: '13px',
                         fontWeight: 700,
                         cursor: podeDesenhar ? 'pointer' : 'not-allowed',
-                        backgroundColor: desenhando ? 'rgba(248,113,113,0.15)' : 'rgba(64,166,244,0.15)',
-                        color: desenhando ? '#F87171' : '#40A6F4',
+                        backgroundColor: desenhando
+                          ? 'rgba(248,113,113,0.15)'
+                          : desenhoFinalizado
+                          ? 'rgba(74,222,128,0.15)'
+                          : 'rgba(64,166,244,0.15)',
+                        color: desenhando ? '#F87171' : desenhoFinalizado ? '#4ADE80' : '#40A6F4',
                         opacity: podeDesenhar ? 1 : 0.4,
                       }}
                     >
-                      {desenhando ? '✕ Parar' : '✏ Desenhar'}
+                      {desenhando ? '✕ Parar' : desenhoFinalizado ? '✓ Finalizado' : '✏ Desenhar'}
                     </button>
                     {pontos.length > 0 && (
                       <button onClick={limparDesenho} style={{ ...btnSecundario, flex: 1 }}>

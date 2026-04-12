@@ -20,39 +20,47 @@ export type MapaRegioesRef = {
   getPontos: () => Ponto[]
   moverParaCidade: (lat: number, lng: number, zoom: number) => void
   renderizarRegioes: (regioes: RegiaoMapa[], selecionada: number | null) => void
-  ativarEdicao: (pontos: Ponto[], onChange: (pontos: Ponto[]) => void) => void
+  ativarEdicao: (pontos: Ponto[], onChange: (pontos: Ponto[]) => void, onSelect: (i: number) => void) => void
+  atualizarPontoEdicao: (index: number, lat: number, lng: number) => void
+  excluirPontoEdicao: (index: number) => void
+  selecionarPontoEdicao: (index: number | null) => void
   desativarEdicao: () => void
 }
 
 type Props = {
   onDesenhoAtualizado?: (pontos: Ponto[]) => void
+  onDesenhoFinalizado?: () => void
   onReady?: () => void
 }
 
-const MapaRegioes = forwardRef<MapaRegioesRef, Props>(function MapaRegioes({ onDesenhoAtualizado, onReady }, ref) {
+const MapaRegioes = forwardRef<MapaRegioesRef, Props>(function MapaRegioes(
+  { onDesenhoAtualizado, onDesenhoFinalizado, onReady },
+  ref
+) {
   const containerRef = useRef<HTMLDivElement>(null)
   const mapRef = useRef<LeafletMap | null>(null)
   const LRef = useRef<typeof L | null>(null)
 
-  // Estado de desenho
+  // Desenho
   const desenhando = useRef(false)
   const pontosDesenho = useRef<Ponto[]>([])
   const poligonoTemp = useRef<Polygon | null>(null)
   const marcadoresDesenho = useRef<CircleMarker[]>([])
 
-  // Estado de edição
+  // Edição
   const editando = useRef(false)
   const marcadoresEdicao = useRef<CircleMarker[]>([])
+  const poligonoEdicao = useRef<Polygon | null>(null)
   const pontosEdicao = useRef<Ponto[]>([])
   const onChangeEdicao = useRef<((pontos: Ponto[]) => void) | null>(null)
+  const onSelectEdicao = useRef<((i: number) => void) | null>(null)
+  const pontoSelecionado = useRef<number | null>(null)
 
-  // Polígonos de regiões cadastradas
+  // Regiões cadastradas
   const poligonosCadastrados = useRef<Polygon[]>([])
 
   useEffect(() => {
     if (!containerRef.current || mapRef.current) return
-
-    // Guard contra double-mount do StrictMode
     const container = containerRef.current
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     if ((container as any)._leaflet_id) return
@@ -62,7 +70,6 @@ const MapaRegioes = forwardRef<MapaRegioesRef, Props>(function MapaRegioes({ onD
       await import('leaflet/dist/leaflet.css')
       LRef.current = L
 
-      // Verifica novamente após o await (pode ter montado duas vezes)
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       if ((container as any)._leaflet_id) return
 
@@ -91,6 +98,7 @@ const MapaRegioes = forwardRef<MapaRegioesRef, Props>(function MapaRegioes({ onD
         if (pontosDesenho.current.length >= 3) {
           desenhando.current = false
           if (containerRef.current) containerRef.current.style.cursor = ''
+          onDesenhoFinalizado?.()
         }
       })
 
@@ -115,7 +123,7 @@ const MapaRegioes = forwardRef<MapaRegioesRef, Props>(function MapaRegioes({ onD
     if (pts.length === 0) return
 
     if (pts.length >= 2) {
-      poligonoTemp.current = L.polygon(pts as unknown as unknown as LatLng[], {
+      poligonoTemp.current = L.polygon(pts as unknown as LatLng[], {
         color: '#40A6F4',
         fillColor: '#40A6F4',
         fillOpacity: 0.2,
@@ -134,6 +142,76 @@ const MapaRegioes = forwardRef<MapaRegioesRef, Props>(function MapaRegioes({ onD
       }).addTo(map)
       m.bindTooltip(`Ponto ${i + 1}`, { permanent: false })
       marcadoresDesenho.current.push(m)
+    })
+  }
+
+  function atualizarPoligonoEdicao(Lsafe: typeof L, mapSafe: LeafletMap) {
+    poligonoEdicao.current?.remove()
+    const pts = pontosEdicao.current
+    if (pts.length < 2) return
+    poligonoEdicao.current = Lsafe.polygon(pts as unknown as LatLng[], {
+      color: '#40A6F4',
+      fillColor: '#40A6F4',
+      fillOpacity: 0.15,
+      weight: 2,
+      dashArray: '6 4',
+    }).addTo(mapSafe)
+  }
+
+  function renderizarMarcadoresEdicao(Lsafe: typeof L, mapSafe: LeafletMap) {
+    marcadoresEdicao.current.forEach((m) => m.remove())
+    marcadoresEdicao.current = []
+
+    pontosEdicao.current.forEach((p, i) => {
+      const selecionado = pontoSelecionado.current === i
+      const m = Lsafe.circleMarker(p as unknown as LatLng, {
+        radius: selecionado ? 9 : 7,
+        color: selecionado ? '#F87171' : '#40A6F4',
+        fillColor: selecionado ? '#F87171' : '#fff',
+        fillOpacity: 1,
+        weight: 2,
+      }).addTo(mapSafe)
+
+      // Clique seleciona o ponto
+      m.on('click', () => {
+        if (pontoSelecionado.current !== null && marcadoresEdicao.current[pontoSelecionado.current]) {
+          marcadoresEdicao.current[pontoSelecionado.current].setStyle({
+            radius: 7,
+            color: '#40A6F4',
+            fillColor: '#fff',
+          })
+        }
+        pontoSelecionado.current = i
+        m.setStyle({ radius: 9, color: '#F87171', fillColor: '#F87171' })
+        onSelectEdicao.current?.(i)
+      })
+
+      // Arrastar move o ponto
+      m.on('mousedown', (ev) => {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        ;(ev as any).originalEvent?.stopPropagation()
+        mapSafe.dragging.disable()
+
+        function onMouseMove(e: MouseEvent) {
+          const rect = containerRef.current!.getBoundingClientRect()
+          const latlng = mapSafe.containerPointToLatLng([e.clientX - rect.left, e.clientY - rect.top])
+          pontosEdicao.current[i] = [latlng.lat, latlng.lng]
+          m.setLatLng(latlng as unknown as LatLng)
+          atualizarPoligonoEdicao(Lsafe, mapSafe)
+          onChangeEdicao.current?.(pontosEdicao.current)
+        }
+
+        function onMouseUp() {
+          mapSafe.dragging.enable()
+          document.removeEventListener('mousemove', onMouseMove)
+          document.removeEventListener('mouseup', onMouseUp)
+        }
+
+        document.addEventListener('mousemove', onMouseMove)
+        document.addEventListener('mouseup', onMouseUp)
+      })
+
+      marcadoresEdicao.current.push(m)
     })
   }
 
@@ -177,7 +255,7 @@ const MapaRegioes = forwardRef<MapaRegioesRef, Props>(function MapaRegioes({ onD
 
       regioes.forEach((r) => {
         const isSel = r.id === selecionada
-        const poly = L.polygon(r.coordenadas as unknown as unknown as LatLng[], {
+        const poly = L.polygon(r.coordenadas as unknown as LatLng[], {
           color: isSel ? '#fff' : '#40A6F4',
           fillColor: '#40A6F4',
           fillOpacity: r.totalImoveis > 0 ? 0.22 : 0.06,
@@ -194,65 +272,72 @@ const MapaRegioes = forwardRef<MapaRegioesRef, Props>(function MapaRegioes({ onD
       })
     },
 
-    ativarEdicao(pontos, onChange) {
+    ativarEdicao(pontos, onChange, onSelect) {
       const L = LRef.current
       const map = mapRef.current
       if (!L || !map) return
 
-      const Lsafe = L
-      const mapSafe = map
       editando.current = true
       pontosEdicao.current = [...pontos]
       onChangeEdicao.current = onChange
+      onSelectEdicao.current = onSelect
+      pontoSelecionado.current = null
 
-      function renderizarMarcadoresEdicao() {
-        marcadoresEdicao.current.forEach((m) => m.remove())
-        marcadoresEdicao.current = []
+      atualizarPoligonoEdicao(L, map)
+      renderizarMarcadoresEdicao(L, map)
+    },
 
-        pontosEdicao.current.forEach((p, i) => {
-          const m = Lsafe.circleMarker(p as unknown as LatLng, {
-            radius: 8,
-            color: '#40A6F4',
-            fillColor: '#fff',
-            fillOpacity: 1,
-            weight: 2,
-          }).addTo(mapSafe)
+    atualizarPontoEdicao(index, lat, lng) {
+      const L = LRef.current
+      const map = mapRef.current
+      if (!L || !map) return
+      pontosEdicao.current[index] = [lat, lng]
+      marcadoresEdicao.current[index]?.setLatLng([lat, lng] as unknown as LatLng)
+      atualizarPoligonoEdicao(L, map)
+      onChangeEdicao.current?.(pontosEdicao.current)
+    },
 
-          m.on('mousedown', () => {
-            mapSafe.dragging.disable()
+    excluirPontoEdicao(index) {
+      const L = LRef.current
+      const map = mapRef.current
+      if (!L || !map || pontosEdicao.current.length <= 3) return
+      pontosEdicao.current.splice(index, 1)
+      if (pontoSelecionado.current === index) pontoSelecionado.current = null
+      else if (pontoSelecionado.current !== null && pontoSelecionado.current > index)
+        pontoSelecionado.current--
+      onChangeEdicao.current?.(pontosEdicao.current)
+      atualizarPoligonoEdicao(L, map)
+      renderizarMarcadoresEdicao(L, map)
+    },
 
-            function onMouseMove(e: MouseEvent) {
-              const rect = containerRef.current!.getBoundingClientRect()
-              const x = e.clientX - rect.left
-              const y = e.clientY - rect.top
-              const latlng = mapSafe.containerPointToLatLng([x, y])
-              pontosEdicao.current[i] = [latlng.lat, latlng.lng]
-              m.setLatLng(latlng)
-              onChangeEdicao.current?.(pontosEdicao.current)
-            }
-
-            function onMouseUp() {
-              mapSafe.dragging.enable()
-              document.removeEventListener('mousemove', onMouseMove)
-              document.removeEventListener('mouseup', onMouseUp)
-            }
-
-            document.addEventListener('mousemove', onMouseMove)
-            document.addEventListener('mouseup', onMouseUp)
-          })
-
-          marcadoresEdicao.current.push(m)
+    selecionarPontoEdicao(index) {
+      if (!LRef.current || !mapRef.current) return
+      if (pontoSelecionado.current !== null && marcadoresEdicao.current[pontoSelecionado.current]) {
+        marcadoresEdicao.current[pontoSelecionado.current].setStyle({
+          radius: 7,
+          color: '#40A6F4',
+          fillColor: '#fff',
         })
       }
-
-      renderizarMarcadoresEdicao()
+      pontoSelecionado.current = index
+      if (index !== null && marcadoresEdicao.current[index]) {
+        marcadoresEdicao.current[index].setStyle({
+          radius: 9,
+          color: '#F87171',
+          fillColor: '#F87171',
+        })
+      }
     },
 
     desativarEdicao() {
       editando.current = false
+      poligonoEdicao.current?.remove()
+      poligonoEdicao.current = null
       marcadoresEdicao.current.forEach((m) => m.remove())
       marcadoresEdicao.current = []
       onChangeEdicao.current = null
+      onSelectEdicao.current = null
+      pontoSelecionado.current = null
     },
   }))
 

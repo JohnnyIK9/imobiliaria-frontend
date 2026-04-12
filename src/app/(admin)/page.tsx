@@ -65,6 +65,7 @@ export default function DashboardPage() {
   ]
 
   return (
+    <div className="h-full overflow-y-auto">
     <div className="p-8 max-w-5xl mx-auto">
       {/* Cabeçalho */}
       <div className="mb-8">
@@ -135,6 +136,7 @@ export default function DashboardPage() {
           ))}
         </div>
       </div>
+    </div>
     </div>
   )
 }

@@ -158,7 +158,7 @@ function AdminShell({ usuario, children }: { usuario: { nome: string; papel: str
       </aside>
 
       {/* Conteúdo principal */}
-      <main className="flex-1 overflow-y-auto">
+      <main className="flex-1 overflow-hidden">
         {children}
       </main>
     </div>

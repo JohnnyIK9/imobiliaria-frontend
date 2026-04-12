@@ -176,6 +176,7 @@ export default function UsuariosPage() {
   }
 
   return (
+    <div className="h-full overflow-y-auto">
     <div className="p-6 md:p-8 max-w-5xl mx-auto">
       {/* Toast */}
       {toast && (
@@ -540,6 +541,7 @@ export default function UsuariosPage() {
           </div>
         </div>
       )}
+    </div>
     </div>
   )
 }

@@ -24,6 +24,14 @@ export async function getStatsApi() {
   return res
 }
 
+export async function logoutApi() {
+  const res = await fetch(`${API_URL}/api/auth/logout`, {
+    method: 'POST',
+    credentials: 'include',
+  })
+  return res
+}
+
 export async function getUsuariosApi() {
   const res = await fetch(`${API_URL}/api/admin/usuarios`, {
     credentials: 'include',

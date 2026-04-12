@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { useRouter, usePathname } from 'next/navigation'
-import { getMeApi } from '@/lib/api'
+import { getMeApi, logoutApi } from '@/lib/api'
 
 type Usuario = {
   id: number
@@ -54,6 +54,11 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 function AdminShell({ usuario, children }: { usuario: { nome: string; papel: string }; children: React.ReactNode }) {
   const pathname = usePathname()
   const router = useRouter()
+
+  async function handleLogout() {
+    await logoutApi().catch(() => {})
+    router.replace('/login')
+  }
 
   const navItems = [
     { href: '/', label: 'Dashboard', icon: GridIcon },
@@ -111,8 +116,8 @@ function AdminShell({ usuario, children }: { usuario: { nome: string; papel: str
           })}
         </nav>
 
-        {/* Usuário */}
-        <div className="px-4 py-4 border-t" style={{ borderColor: 'rgba(255,255,255,0.08)' }}>
+        {/* Usuário + Sair */}
+        <div className="px-4 py-4 border-t space-y-3" style={{ borderColor: 'rgba(255,255,255,0.08)' }}>
           <div className="flex items-center gap-3">
             <div
               className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 text-xs font-bold"
@@ -129,6 +134,14 @@ function AdminShell({ usuario, children }: { usuario: { nome: string; papel: str
               </p>
             </div>
           </div>
+          <button
+            onClick={handleLogout}
+            className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-bold transition-colors hover:brightness-110"
+            style={{ backgroundColor: 'rgba(248,113,113,0.1)', color: '#F87171' }}
+          >
+            <LogoutIcon size={16} color="#F87171" />
+            Sair
+          </button>
         </div>
       </aside>
 
@@ -182,6 +195,16 @@ function ClipboardIcon({ size = 20, color = 'currentColor' }: { size?: number; c
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
       <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2" />
       <rect x="8" y="2" width="8" height="4" rx="1" ry="1" />
+    </svg>
+  )
+}
+
+function LogoutIcon({ size = 20, color = 'currentColor' }: { size?: number; color?: string }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+      <polyline points="16 17 21 12 16 7" />
+      <line x1="21" y1="12" x2="9" y2="12" />
     </svg>
   )
 }

@@ -37,6 +37,7 @@ export default function UsuariosPage() {
   const [erro, setErro] = useState('')
   const [toast, setToast] = useState<{ msg: string; tipo: 'sucesso' | 'erro' } | null>(null)
   const [menuAberto, setMenuAberto] = useState<number | null>(null)
+  const [alterarSenha, setAlterarSenha] = useState(false)
   const menuRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -69,6 +70,7 @@ export default function UsuariosPage() {
   function abrirNovo() {
     setEditando(null)
     setForm(FORM_VAZIO)
+    setAlterarSenha(false)
     setErro('')
     setModalAberto(true)
   }
@@ -76,6 +78,7 @@ export default function UsuariosPage() {
   function abrirEditar(u: Usuario) {
     setEditando(u)
     setForm({ nome: u.nome, email: u.email, senha: '', papel: u.papel, ativo: u.ativo })
+    setAlterarSenha(false)
     setErro('')
     setModalAberto(true)
     setMenuAberto(null)
@@ -338,7 +341,6 @@ export default function UsuariosPage() {
         <div
           className="fixed inset-0 z-40 flex items-center justify-center px-4"
           style={{ backgroundColor: 'rgba(0,0,0,0.7)' }}
-          onClick={(e) => { if (e.target === e.currentTarget) fecharModal() }}
         >
           <div
             className="w-full max-w-md rounded-2xl p-6 shadow-2xl"
@@ -379,14 +381,58 @@ export default function UsuariosPage() {
               />
 
               {/* Senha */}
-              <CampoTexto
-                label={editando ? 'Senha (deixe vazio para não alterar)' : 'Senha'}
-                type="password"
-                value={form.senha}
-                onChange={(v) => setForm({ ...form, senha: v })}
-                required={!editando}
-                placeholder="••••••••"
-              />
+              {editando ? (
+                <div>
+                  <label className="flex items-center gap-2 cursor-pointer w-fit">
+                    <div
+                      className="w-4 h-4 rounded flex items-center justify-center flex-shrink-0 transition-colors"
+                      style={{
+                        backgroundColor: alterarSenha ? 'var(--color-blue)' : 'var(--color-green-mid)',
+                        border: `1.5px solid ${alterarSenha ? 'var(--color-blue)' : 'rgba(255,255,255,0.2)'}`,
+                      }}
+                    >
+                      {alterarSenha && (
+                        <svg width="10" height="8" viewBox="0 0 10 8" fill="none">
+                          <path d="M1 4l2.5 2.5L9 1" stroke="#fff" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                        </svg>
+                      )}
+                    </div>
+                    <input
+                      type="checkbox"
+                      checked={alterarSenha}
+                      onChange={(e) => {
+                        setAlterarSenha(e.target.checked)
+                        if (!e.target.checked) setForm({ ...form, senha: '' })
+                      }}
+                      className="sr-only"
+                    />
+                    <span className="text-sm font-bold" style={{ color: 'var(--color-white)' }}>
+                      Alterar senha
+                    </span>
+                  </label>
+                  {alterarSenha && (
+                    <div className="mt-3">
+                      <CampoTexto
+                        label="Nova senha"
+                        type="password"
+                        value={form.senha}
+                        onChange={(v) => setForm({ ...form, senha: v })}
+                        required
+                        placeholder="••••••••"
+                      />
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <CampoTexto
+                  label="Senha"
+                  type="password"
+                  value={form.senha}
+                  onChange={(v) => setForm({ ...form, senha: v })}
+                  required
+                  placeholder="••••••••"
+                />
+              )}
 
               {/* Papel + Ativo */}
               <div className="grid grid-cols-2 gap-3">

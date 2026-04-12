@@ -17,7 +17,20 @@ import type { MapaRegioesRef, Ponto, RegiaoMapa } from '@/components/admin/MapaR
 const MapaRegioes = dynamic(() => import('@/components/admin/MapaRegioes'), { ssr: false })
 
 type Estado = { id: string; nome: string }
+type CidadeRaw = { id: number; nome: string; estadoId?: string; estado_id?: string; prefixo?: string; latCentro?: number; lat_centro?: number; lngCentro?: number; lng_centro?: number; zoomPadrao?: number; zoom_padrao?: number }
 type Cidade = { id: number; nome: string; estadoId: string; prefixo: string; latCentro: number; lngCentro: number; zoomPadrao: number }
+
+function normalizarCidade(r: CidadeRaw): Cidade {
+  return {
+    id: r.id,
+    nome: r.nome,
+    estadoId: r.estadoId ?? r.estado_id ?? '',
+    prefixo: r.prefixo ?? '',
+    latCentro: r.latCentro ?? r.lat_centro ?? 0,
+    lngCentro: r.lngCentro ?? r.lng_centro ?? 0,
+    zoomPadrao: r.zoomPadrao ?? r.zoom_padrao ?? 13,
+  }
+}
 type Regiao = { id: number; nome: string; coordenadas: string }
 
 type ModoEdicao = {
@@ -86,7 +99,7 @@ export default function RegioesPage() {
     if (!estadoSel) { setCidades([]); setCidadeSel(null); return }
     getCidadesApi(estadoSel).then(async (r) => {
       if (r.ok) {
-        const lista: Cidade[] = await r.json()
+        const lista: Cidade[] = (await r.json()).map(normalizarCidade)
         setCidades(lista)
         // Restaura última cidade se pertencer ao estado atual
         if (cidadeIdSalva.current) {
@@ -308,7 +321,7 @@ export default function RegioesPage() {
         // Recarrega as cidades do estado selecionado no header
         if (novaCidade.estadoId === estadoSel) {
           getCidadesApi(estadoSel).then(async (r) => {
-            if (r.ok) setCidades(await r.json())
+            if (r.ok) setCidades((await r.json()).map(normalizarCidade))
           })
         }
       } else {
@@ -359,7 +372,7 @@ export default function RegioesPage() {
         // Recarrega cidades e atualiza cidadeSel com os novos dados
         const r = await getCidadesApi(editCidade.estadoId)
         if (r.ok) {
-          const lista: Cidade[] = await r.json()
+          const lista: Cidade[] = (await r.json()).map(normalizarCidade)
           setCidades(lista)
           const atualizada = lista.find((c) => c.id === cidadeSel.id) ?? null
           setCidadeSel(atualizada)

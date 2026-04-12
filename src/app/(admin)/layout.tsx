@@ -141,7 +141,7 @@ function AdminShell({ usuario, children }: { usuario: { nome: string; papel: str
               <p style={{ color: 'var(--color-white)', fontSize: '14px', fontWeight: 700, margin: 0, lineHeight: '1.2', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                 {usuario.nome}
               </p>
-              <p style={{ color: 'var(--color-gray-dark)', fontSize: '12px', fontWeight: 300, margin: 0, lineHeight: '1.2' }}>
+              <p style={{ color: 'var(--color-white)', fontSize: '12px', fontWeight: 300, margin: 0, lineHeight: '1.2' }}>
                 {usuario.papel === 'adm' ? 'Administrador' : 'Editor'}
               </p>
             </div>

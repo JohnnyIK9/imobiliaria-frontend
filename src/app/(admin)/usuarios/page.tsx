@@ -159,6 +159,22 @@ export default function UsuariosPage() {
     }
   }
 
+  async function handleAtivar(u: Usuario) {
+    setMenuAberto(null)
+    try {
+      const dados = { nome: u.nome, email: u.email, papel: u.papel, ativo: true }
+      const res = await editarUsuarioApi(u.id, dados)
+      if (res.ok) {
+        exibirToast('Usuário ativado.', 'sucesso')
+        carregarUsuarios()
+      } else {
+        exibirToast('Erro ao ativar.', 'erro')
+      }
+    } catch {
+      exibirToast('Erro de conexão.', 'erro')
+    }
+  }
+
   return (
     <div className="p-6 md:p-8 max-w-5xl mx-auto">
       {/* Toast */}
@@ -251,13 +267,21 @@ export default function UsuariosPage() {
                       >
                         Editar
                       </button>
-                      {u.ativo && (
+                      {u.ativo ? (
                         <button
                           onClick={() => handleDesativar(u)}
                           className="px-3 py-1.5 rounded-lg text-xs font-bold transition-colors hover:brightness-110"
                           style={{ backgroundColor: '#3B1F1F', color: '#F87171' }}
                         >
                           Desativar
+                        </button>
+                      ) : (
+                        <button
+                          onClick={() => handleAtivar(u)}
+                          className="px-3 py-1.5 rounded-lg text-xs font-bold transition-colors hover:brightness-110"
+                          style={{ backgroundColor: '#14532d', color: '#4ADE80' }}
+                        >
+                          Ativar
                         </button>
                       )}
                     </div>
@@ -318,13 +342,21 @@ export default function UsuariosPage() {
                       >
                         Editar
                       </button>
-                      {u.ativo && (
+                      {u.ativo ? (
                         <button
                           onClick={() => handleDesativar(u)}
                           className="w-full text-left px-4 py-3 text-sm font-bold hover:brightness-125 transition-colors"
                           style={{ color: '#F87171', borderTop: '1px solid rgba(255,255,255,0.08)' }}
                         >
                           Desativar
+                        </button>
+                      ) : (
+                        <button
+                          onClick={() => handleAtivar(u)}
+                          className="w-full text-left px-4 py-3 text-sm font-bold hover:brightness-125 transition-colors"
+                          style={{ color: '#4ADE80', borderTop: '1px solid rgba(255,255,255,0.08)' }}
+                        >
+                          Ativar
                         </button>
                       )}
                     </div>

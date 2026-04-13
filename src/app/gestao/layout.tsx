@@ -18,7 +18,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const [verificando, setVerificando] = useState(true)
 
   useEffect(() => {
-    if (pathname === '/login') {
+    if (pathname === '/gestao/login') {
       setVerificando(false)
       return
     }
@@ -29,14 +29,14 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           const data = await res.json()
           setUsuario(data)
         } else {
-          router.replace('/login')
+          router.replace('/gestao/login')
         }
       })
-      .catch(() => router.replace('/login'))
+      .catch(() => router.replace('/gestao/login'))
       .finally(() => setVerificando(false))
   }, [pathname, router])
 
-  if (pathname === '/login') return <>{children}</>
+  if (pathname === '/gestao/login') return <>{children}</>
 
   if (verificando) {
     return (
@@ -57,18 +57,18 @@ function AdminShell({ usuario, children }: { usuario: { nome: string; papel: str
 
   async function handleLogout() {
     await logoutApi().catch(() => {})
-    router.replace('/login')
+    router.replace('/gestao/login')
   }
 
   const navItems = [
-    { href: '/', label: 'Dashboard', icon: GridIcon },
-    { href: '/imoveis', label: 'Imóveis', icon: HomeIcon },
-    { href: '/regioes', label: 'Regiões', icon: MapIcon },
-    ...(usuario.papel === 'adm' ? [{ href: '/usuarios', label: 'Usuários', icon: UserIcon }] : []),
+    { href: '/gestao', label: 'Dashboard', icon: GridIcon },
+    { href: '/gestao/imoveis', label: 'Imóveis', icon: HomeIcon },
+    { href: '/gestao/regioes', label: 'Regiões', icon: MapIcon },
+    ...(usuario.papel === 'adm' ? [{ href: '/gestao/usuarios', label: 'Usuários', icon: UserIcon }] : []),
   ]
 
   function isActive(href: string) {
-    if (href === '/') return pathname === '/'
+    if (href === '/gestao') return pathname === '/gestao'
     return pathname.startsWith(href)
   }
 

@@ -34,7 +34,7 @@ export default function LoginPage() {
       const res = await loginApi(email, senha)
 
       if (res.ok) {
-        router.push('/')
+        router.push('/gestao')
         return
       }
 

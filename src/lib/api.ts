@@ -174,6 +174,36 @@ export async function desativarUsuarioApi(id: number) {
   return res
 }
 
+// ── Público ────────────────────────────────────────────────
+export async function getCidadesPublicasApi() {
+  return fetch(`${API_URL}/api/cidades`)
+}
+
+export async function getRegioesPorCidadePublicaApi(cidadeId: number) {
+  return fetch(`${API_URL}/api/cidades/${cidadeId}/regioes`)
+}
+
+export async function getImoveisPublicosApi(params?: {
+  cidadeId?: number
+  regiaoId?: number
+  tipo?: string
+  precoMin?: number
+  precoMax?: number
+  quartos?: number
+  vagas?: number
+}) {
+  const q = new URLSearchParams()
+  if (params?.cidadeId) q.set('cidade_id', params.cidadeId.toString())
+  if (params?.regiaoId) q.set('regiao_id', params.regiaoId.toString())
+  if (params?.tipo) q.set('tipo', params.tipo)
+  if (params?.precoMin) q.set('preco_min', params.precoMin.toString())
+  if (params?.precoMax) q.set('preco_max', params.precoMax.toString())
+  if (params?.quartos) q.set('quartos', params.quartos.toString())
+  if (params?.vagas) q.set('vagas', params.vagas.toString())
+  const url = `${API_URL}/api/imoveis${q.toString() ? '?' + q.toString() : ''}`
+  return fetch(url)
+}
+
 // ── Imóveis ────────────────────────────────────────────────
 export async function getImoveisAdminApi(params?: { cidadeId?: number; regiaoId?: number }) {
   const query = new URLSearchParams()

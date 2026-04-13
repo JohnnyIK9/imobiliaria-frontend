@@ -1,16 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server'
 
-const DOMINIOS_PUBLICOS = [
-  'anaerichard.visualizeaquiseu.app.br',  // homologação
-  'imobiliariadoprofessor.com.br',         // produção
+// Subdomínios admin explícitos (conforme documentação)
+const HOSTS_GESTAO = [
+  'gestao.imobiliariadoprofessor.com.br',      // produção
+  'gestaoanaerichard.visualizeaquiseu.app.br', // homologação
 ]
 
-export function middleware(request: NextRequest) {
+export function proxy(request: NextRequest) {
   const host = request.headers.get('host') ?? ''
-  // Remove porta caso esteja presente (ex: localhost:3000)
   const hostname = host.split(':')[0]
 
-  const isGestao = DOMINIOS_PUBLICOS.some((d) => hostname === `gestao.${d}`)
+  const isGestao = HOSTS_GESTAO.includes(hostname)
 
   if (isGestao) {
     const url = request.nextUrl.clone()

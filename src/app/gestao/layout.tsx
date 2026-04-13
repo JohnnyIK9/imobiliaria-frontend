@@ -82,12 +82,8 @@ function AdminShell({ usuario, children }: { usuario: { nome: string; papel: str
         {/* Logo */}
         <div className="px-6 py-5 border-b" style={{ borderColor: 'rgba(255,255,255,0.08)' }}>
           <div className="flex items-center gap-3">
-            <div
-              className="flex-shrink-0 w-8 h-8 rounded-lg flex items-center justify-center"
-              style={{ backgroundColor: 'var(--color-blue)' }}
-            >
-              <HomeIcon size={16} color="#fff" />
-            </div>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/svg/white-02.svg" alt="Logo" className="flex-shrink-0 w-8 h-8" style={{ objectFit: 'contain' }} />
             <span className="text-sm font-bold leading-tight" style={{ color: 'var(--color-white)' }}>
               Imobiliária<br />do Professor
             </span>

@@ -176,7 +176,7 @@ export default function UsuariosPage() {
   }
 
   return (
-    <div className="h-full overflow-y-auto">
+    <div className="h-full overflow-y-auto" style={{ fontFamily: "'DM Sans', sans-serif" }}>
     <div className="p-6 md:p-8 max-w-5xl mx-auto">
       {/* Toast */}
       {toast && (
@@ -205,22 +205,22 @@ export default function UsuariosPage() {
         <button
           onClick={abrirNovo}
           className="flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-bold transition-opacity hover:opacity-90"
-          style={{ backgroundColor: 'var(--color-blue)', color: '#fff' }}
+          style={{ backgroundColor: 'var(--gold, #c49818)', color: '#fff' }}
         >
           <span className="text-base leading-none">+</span> Novo usuário
         </button>
       </div>
 
       {/* Tabela — Desktop */}
-      <div className="hidden md:block rounded-xl overflow-hidden" style={{ backgroundColor: 'var(--color-green-dark)' }}>
+      <div className="hidden md:block rounded-xl overflow-hidden" style={{ backgroundColor: 'var(--paper, #f4f1e6)' }}>
         <table className="w-full text-sm">
           <thead>
-            <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
+            <tr style={{ borderBottom: '1px solid rgba(27,58,47,0.12)' }}>
               {['Nome', 'E-mail', 'Papel', 'Status', 'Último acesso', ''].map((h) => (
                 <th
                   key={h}
                   className="text-left px-5 py-3.5 font-bold text-xs uppercase tracking-wide"
-                  style={{ color: 'var(--color-gray-dark)' }}
+                  style={{ color: 'var(--sepia, #7a9e88)' }}
                 >
                   {h}
                 </th>
@@ -230,10 +230,10 @@ export default function UsuariosPage() {
           <tbody>
             {carregando ? (
               Array.from({ length: 3 }).map((_, i) => (
-                <tr key={i} style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+                <tr key={i} style={{ borderBottom: '1px solid rgba(27,58,47,0.08)' }}>
                   {Array.from({ length: 5 }).map((_, j) => (
                     <td key={j} className="px-5 py-4">
-                      <div className="h-4 rounded animate-pulse" style={{ backgroundColor: 'var(--color-green-mid)', width: j === 0 ? '120px' : j === 1 ? '180px' : '80px' }} />
+                      <div className="h-4 rounded animate-pulse" style={{ backgroundColor: 'var(--paper-3, #dddac8)', width: j === 0 ? '120px' : j === 1 ? '180px' : '80px' }} />
                     </td>
                   ))}
                   <td className="px-5 py-4" />
@@ -241,22 +241,22 @@ export default function UsuariosPage() {
               ))
             ) : usuarios.length === 0 ? (
               <tr>
-                <td colSpan={6} className="px-5 py-10 text-center text-sm font-light" style={{ color: 'var(--color-gray-dark)' }}>
+                <td colSpan={6} className="px-5 py-10 text-center text-sm font-light" style={{ color: 'var(--sepia, #7a9e88)' }}>
                   Nenhum usuário encontrado.
                 </td>
               </tr>
             ) : (
               usuarios.map((u) => (
-                <tr key={u.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
-                  <td className="px-5 py-4 font-bold" style={{ color: 'var(--color-white)' }}>{u.nome}</td>
-                  <td className="px-5 py-4 font-light" style={{ color: 'rgba(255,255,255,0.7)' }}>{u.email}</td>
+                <tr key={u.id} style={{ borderBottom: '1px solid rgba(27,58,47,0.08)' }}>
+                  <td className="px-5 py-4 font-bold" style={{ color: 'var(--ink, #1b3a2f)' }}>{u.nome}</td>
+                  <td className="px-5 py-4 font-light" style={{ color: 'rgba(27,58,47,0.7)' }}>{u.email}</td>
                   <td className="px-5 py-4">
                     <PapelBadge papel={u.papel} />
                   </td>
                   <td className="px-5 py-4">
                     <StatusBadge ativo={u.ativo} />
                   </td>
-                  <td className="px-5 py-4 font-light text-xs" style={{ color: 'var(--color-gray-dark)' }}>
+                  <td className="px-5 py-4 font-light text-xs" style={{ color: 'var(--sepia, #7a9e88)' }}>
                     {formatarData(u.ultimoAcesso)}
                   </td>
                   <td className="px-5 py-4">
@@ -264,7 +264,7 @@ export default function UsuariosPage() {
                       <button
                         onClick={() => abrirEditar(u)}
                         className="px-3 py-1.5 rounded-lg text-xs font-bold transition-colors hover:brightness-110"
-                        style={{ backgroundColor: 'var(--color-green-mid)', color: 'var(--color-white)' }}
+                        style={{ backgroundColor: 'var(--paper-3, #dddac8)', color: 'var(--ink, #1b3a2f)' }}
                       >
                         Editar
                       </button>
@@ -298,27 +298,27 @@ export default function UsuariosPage() {
       <div className="md:hidden space-y-3" ref={menuRef}>
         {carregando ? (
           Array.from({ length: 3 }).map((_, i) => (
-            <div key={i} className="rounded-xl p-4 animate-pulse" style={{ backgroundColor: 'var(--color-green-dark)' }}>
-              <div className="h-4 w-32 rounded mb-2" style={{ backgroundColor: 'var(--color-green-mid)' }} />
-              <div className="h-3 w-48 rounded" style={{ backgroundColor: 'var(--color-green-mid)' }} />
+            <div key={i} className="rounded-xl p-4 animate-pulse" style={{ backgroundColor: 'var(--paper, #f4f1e6)' }}>
+              <div className="h-4 w-32 rounded mb-2" style={{ backgroundColor: 'var(--paper-3, #dddac8)' }} />
+              <div className="h-3 w-48 rounded" style={{ backgroundColor: 'var(--paper-3, #dddac8)' }} />
             </div>
           ))
         ) : usuarios.length === 0 ? (
-          <p className="text-center py-10 text-sm font-light" style={{ color: 'var(--color-gray-dark)' }}>
+          <p className="text-center py-10 text-sm font-light" style={{ color: 'var(--sepia, #7a9e88)' }}>
             Nenhum usuário encontrado.
           </p>
         ) : (
           usuarios.map((u) => (
-            <div key={u.id} className="rounded-xl p-4 relative" style={{ backgroundColor: 'var(--color-green-dark)' }}>
+            <div key={u.id} className="rounded-xl p-4 relative" style={{ backgroundColor: 'var(--paper, #f4f1e6)' }}>
               <div className="flex items-start justify-between">
                 <div className="flex-1 min-w-0">
-                  <p className="font-bold text-sm truncate" style={{ color: 'var(--color-white)' }}>{u.nome}</p>
-                  <p className="text-xs font-light truncate mt-0.5" style={{ color: 'rgba(255,255,255,0.6)' }}>{u.email}</p>
+                  <p className="font-bold text-sm truncate" style={{ color: 'var(--ink, #1b3a2f)' }}>{u.nome}</p>
+                  <p className="text-xs font-light truncate mt-0.5" style={{ color: 'rgba(27,58,47,0.6)' }}>{u.email}</p>
                   <div className="flex items-center gap-2 mt-2">
                     <PapelBadge papel={u.papel} />
                     <StatusBadge ativo={u.ativo} />
                   </div>
-                  <p className="text-xs font-light mt-2" style={{ color: 'var(--color-gray-dark)' }}>
+                  <p className="text-xs font-light mt-2" style={{ color: 'var(--sepia, #7a9e88)' }}>
                     Último acesso: {formatarData(u.ultimoAcesso)}
                   </p>
                 </div>
@@ -327,35 +327,35 @@ export default function UsuariosPage() {
                   <button
                     onClick={() => setMenuAberto(menuAberto === u.id ? null : u.id)}
                     className="w-8 h-8 flex items-center justify-center rounded-lg text-lg font-bold leading-none"
-                    style={{ color: 'var(--color-gray-dark)', backgroundColor: 'var(--color-green-mid)' }}
+                    style={{ color: 'var(--sepia, #7a9e88)', backgroundColor: 'var(--paper-3, #dddac8)' }}
                   >
                     ⋮
                   </button>
                   {menuAberto === u.id && (
                     <div
                       className="absolute right-0 top-10 z-20 rounded-xl shadow-xl overflow-hidden min-w-[130px]"
-                      style={{ backgroundColor: 'var(--color-green-mid)', border: '1px solid rgba(255,255,255,0.1)' }}
+                      style={{ backgroundColor: 'var(--paper-2, #eae6d4)', border: '1px solid var(--paper-3, #dddac8)' }}
                     >
                       <button
                         onClick={() => abrirEditar(u)}
-                        className="w-full text-left px-4 py-3 text-sm font-bold hover:brightness-125 transition-colors"
-                        style={{ color: 'var(--color-white)' }}
+                        className="w-full text-left px-4 py-3 text-sm font-bold hover:brightness-95 transition-colors"
+                        style={{ color: 'var(--ink, #1b3a2f)' }}
                       >
                         Editar
                       </button>
                       {u.ativo ? (
                         <button
                           onClick={() => handleDesativar(u)}
-                          className="w-full text-left px-4 py-3 text-sm font-bold hover:brightness-125 transition-colors"
-                          style={{ color: '#F87171', borderTop: '1px solid rgba(255,255,255,0.08)' }}
+                          className="w-full text-left px-4 py-3 text-sm font-bold hover:brightness-95 transition-colors"
+                          style={{ color: '#F87171', borderTop: '1px solid rgba(27,58,47,0.08)' }}
                         >
                           Desativar
                         </button>
                       ) : (
                         <button
                           onClick={() => handleAtivar(u)}
-                          className="w-full text-left px-4 py-3 text-sm font-bold hover:brightness-125 transition-colors"
-                          style={{ color: '#4ADE80', borderTop: '1px solid rgba(255,255,255,0.08)' }}
+                          className="w-full text-left px-4 py-3 text-sm font-bold hover:brightness-95 transition-colors"
+                          style={{ color: '#27ae60', borderTop: '1px solid rgba(27,58,47,0.08)' }}
                         >
                           Ativar
                         </button>
@@ -420,8 +420,8 @@ export default function UsuariosPage() {
                     <div
                       className="w-4 h-4 rounded flex items-center justify-center flex-shrink-0 transition-colors"
                       style={{
-                        backgroundColor: alterarSenha ? 'var(--color-blue)' : 'var(--color-green-mid)',
-                        border: `1.5px solid ${alterarSenha ? 'var(--color-blue)' : 'rgba(255,255,255,0.2)'}`,
+                        backgroundColor: alterarSenha ? 'var(--gold, #c49818)' : 'var(--color-green-mid)',
+                        border: `1.5px solid ${alterarSenha ? 'var(--gold, #c49818)' : 'rgba(255,255,255,0.2)'}`,
                       }}
                     >
                       {alterarSenha && (
@@ -532,7 +532,7 @@ export default function UsuariosPage() {
                   type="submit"
                   disabled={salvando}
                   className="flex-1 py-2.5 rounded-lg text-sm font-bold transition-opacity"
-                  style={{ backgroundColor: 'var(--color-blue)', color: '#fff', opacity: salvando ? 0.6 : 1 }}
+                  style={{ backgroundColor: 'var(--gold, #c49818)', color: '#fff', opacity: salvando ? 0.6 : 1 }}
                 >
                   {salvando ? 'Salvando...' : 'Salvar'}
                 </button>
@@ -576,7 +576,7 @@ function CampoTexto({
         placeholder={placeholder}
         className="w-full rounded-lg px-4 py-2.5 text-sm outline-none transition-all placeholder:font-light"
         style={{ backgroundColor: 'var(--color-green-mid)', color: 'var(--color-white)', border: '1px solid transparent' }}
-        onFocus={(e) => (e.currentTarget.style.borderColor = 'var(--color-blue)')}
+        onFocus={(e) => (e.currentTarget.style.borderColor = 'var(--gold, #c49818)')}
         onBlur={(e) => (e.currentTarget.style.borderColor = 'transparent')}
       />
     </div>
@@ -588,8 +588,8 @@ function PapelBadge({ papel }: { papel: 'adm' | 'editor' }) {
     <span
       className="inline-block px-2 py-0.5 rounded text-xs font-bold"
       style={{
-        backgroundColor: papel === 'adm' ? 'rgba(64,166,244,0.15)' : 'rgba(255,255,255,0.08)',
-        color: papel === 'adm' ? 'var(--color-blue)' : 'rgba(255,255,255,0.6)',
+        backgroundColor: papel === 'adm' ? 'rgba(196,152,24,0.15)' : 'rgba(27,58,47,0.08)',
+        color: papel === 'adm' ? 'var(--gold, #c49818)' : 'var(--sepia, #7a9e88)',
       }}
     >
       {papel === 'adm' ? 'Administrador' : 'Editor'}

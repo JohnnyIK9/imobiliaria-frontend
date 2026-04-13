@@ -41,7 +41,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   if (verificando) {
     return (
       <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: 'var(--color-black)' }}>
-        <div className="w-8 h-8 rounded-full border-2 border-t-transparent animate-spin" style={{ borderColor: 'var(--color-blue)', borderTopColor: 'transparent' }} />
+        <div className="w-8 h-8 rounded-full border-2 border-t-transparent animate-spin" style={{ borderColor: 'var(--gold, #c49818)', borderTopColor: 'transparent' }} />
       </div>
     )
   }
@@ -73,14 +73,14 @@ function AdminShell({ usuario, children }: { usuario: { nome: string; papel: str
   }
 
   return (
-    <div className="flex h-screen overflow-hidden" style={{ backgroundColor: 'var(--color-black)' }}>
+    <div className="flex h-screen overflow-hidden" style={{ backgroundColor: 'var(--color-black)', fontFamily: "'DM Sans', sans-serif" }}>
       {/* Sidebar */}
       <aside
         className="w-60 flex-shrink-0 flex flex-col"
         style={{ backgroundColor: 'var(--color-green-dark)' }}
       >
         {/* Logo */}
-        <div className="px-6 py-5 border-b" style={{ borderColor: 'rgba(255,255,255,0.08)' }}>
+        <div className="px-6 py-5 border-b" style={{ borderColor: 'rgba(255,255,255,0.08)', borderBottom: '3px solid var(--gold, #c49818)' }}>
           <div className="flex items-center gap-3">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src="/svg/white-02.svg" alt="Logo" className="flex-shrink-0 w-8 h-8" style={{ objectFit: 'contain' }} />
@@ -100,11 +100,11 @@ function AdminShell({ usuario, children }: { usuario: { nome: string; papel: str
                 onClick={() => router.push(item.href)}
                 className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-bold transition-colors text-left"
                 style={{
-                  backgroundColor: active ? 'rgba(64,166,244,0.15)' : 'transparent',
-                  color: active ? 'var(--color-blue)' : 'rgba(255,255,255,0.6)',
+                  backgroundColor: active ? 'rgba(196,152,24,0.15)' : 'transparent',
+                  color: active ? 'var(--gold, #c49818)' : 'rgba(255,255,255,0.6)',
                 }}
               >
-                <item.icon size={18} color={active ? '#40A6F4' : 'rgba(255,255,255,0.5)'} />
+                <item.icon size={18} color={active ? '#c49818' : 'rgba(255,255,255,0.5)'} />
                 {item.label}
               </button>
             )
@@ -120,7 +120,7 @@ function AdminShell({ usuario, children }: { usuario: { nome: string; papel: str
                 height: '32px',
                 borderRadius: '50%',
                 flexShrink: 0,
-                backgroundColor: 'var(--color-blue)',
+                backgroundColor: 'var(--gold, #c49818)',
                 color: '#fff',
                 display: 'flex',
                 alignItems: 'center',

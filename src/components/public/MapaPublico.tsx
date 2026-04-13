@@ -110,7 +110,7 @@ export default function MapaPublico({
       }).addTo(map)
 
       poligono.bindTooltip(
-        `<strong style="font-family:Lato,sans-serif;font-size:13px">${regiao.nome}</strong><br/><span style="font-family:Lato,sans-serif;font-size:11px;color:#40A6F4">${regiao.totalImoveis} imóvel${regiao.totalImoveis !== 1 ? 's' : ''}</span>`,
+        `<strong style="font-family:'IM Fell English',serif;font-size:13px;color:#ffffff">${regiao.nome}</strong><br/><span style="font-family:'IM Fell English',serif;font-size:11px;color:#c49818">${regiao.totalImoveis} imóvel${regiao.totalImoveis !== 1 ? 's' : ''}</span>`,
         { permanent: true, direction: 'center', className: 'tooltip-regiao' }
       )
 
@@ -133,14 +133,22 @@ export default function MapaPublico({
     <>
       <style>{`
         .tooltip-regiao {
-          background: rgba(29,30,32,0.88);
-          border: 1px solid rgba(64,166,244,0.3);
-          border-radius: 8px;
-          padding: 5px 10px;
-          color: #fff;
-          box-shadow: 0 2px 12px rgba(0,0,0,0.4);
+          background: #1b3a2f !important;
+          background-color: #1b3a2f !important;
+          border: 1px solid #c49818 !important;
+          border-radius: 6px !important;
+          padding: 5px 10px !important;
+          color: #fff !important;
+          box-shadow: 0 2px 12px rgba(0,0,0,0.4) !important;
         }
-        .tooltip-regiao::before { display: none; }
+        .leaflet-tooltip.tooltip-regiao {
+          background: #1b3a2f !important;
+          background-color: #1b3a2f !important;
+          border: 1px solid #c49818 !important;
+          color: #fff !important;
+        }
+        .tooltip-regiao::before,
+        .tooltip-regiao::after { display: none !important; }
         .leaflet-container { font-family: 'Lato', sans-serif; }
       `}</style>
       <link

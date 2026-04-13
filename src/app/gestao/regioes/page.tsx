@@ -432,7 +432,7 @@ export default function RegioesPage() {
   const desenhoAtivo = pontos.length >= 3
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden', fontFamily: "'DM Sans', sans-serif" }}>
       {/* Toast */}
       {toast && (
         <div
@@ -504,9 +504,9 @@ export default function RegioesPage() {
             <button
               onClick={abrirEditarCidade}
               style={{
-                backgroundColor: 'rgba(64,166,244,0.12)',
-                color: '#40A6F4',
-                border: '1px solid rgba(64,166,244,0.25)',
+                backgroundColor: 'rgba(196,152,24,0.12)',
+                color: '#c49818',
+                border: '1px solid rgba(196,152,24,0.25)',
                 borderRadius: '8px',
                 padding: '8px 14px',
                 fontSize: '13px',
@@ -567,8 +567,8 @@ export default function RegioesPage() {
                 width: '36px',
                 height: '36px',
                 borderRadius: '50%',
-                border: '3px solid rgba(64,166,244,0.2)',
-                borderTopColor: '#40A6F4',
+                border: '3px solid rgba(196,152,24,0.2)',
+                borderTopColor: '#c49818',
                 animation: 'spin 0.8s linear infinite',
               }} />
               <p style={{ color: 'rgba(255,255,255,0.5)', fontSize: '13px', fontWeight: 300, margin: 0 }}>
@@ -588,8 +588,8 @@ export default function RegioesPage() {
                 transform: 'translateX(-50%)',
                 zIndex: 500,
                 backgroundColor: 'rgba(29,30,32,0.9)',
-                color: '#40A6F4',
-                border: '1px solid rgba(64,166,244,0.4)',
+                color: '#c49818',
+                border: '1px solid rgba(196,152,24,0.4)',
                 borderRadius: '8px',
                 padding: '8px 16px',
                 fontSize: '13px',
@@ -759,8 +759,8 @@ export default function RegioesPage() {
                           ? 'rgba(248,113,113,0.15)'
                           : desenhoFinalizado
                           ? 'rgba(74,222,128,0.15)'
-                          : 'rgba(64,166,244,0.15)',
-                        color: desenhando ? '#F87171' : desenhoFinalizado ? '#4ADE80' : '#40A6F4',
+                          : 'rgba(196,152,24,0.15)',
+                        color: desenhando ? '#F87171' : desenhoFinalizado ? '#4ADE80' : '#c49818',
                         opacity: podeDesenhar ? 1 : 0.4,
                       }}
                     >
@@ -835,8 +835,8 @@ export default function RegioesPage() {
                           <button
                             onClick={() => iniciarEdicao(r)}
                             style={{
-                              backgroundColor: 'rgba(64,166,244,0.15)',
-                              color: '#40A6F4',
+                              backgroundColor: 'rgba(196,152,24,0.15)',
+                              color: '#c49818',
                               border: 'none',
                               borderRadius: '6px',
                               padding: '5px 10px',
@@ -983,7 +983,7 @@ export default function RegioesPage() {
                   value={novaCidade.prefixo}
                   onChange={(e) => setNovaCidade((p) => ({ ...p, prefixo: e.target.value.toUpperCase().replace(/[^A-Z]/g, '') }))}
                   style={estiloInputModal}
-                  onFocus={(e) => (e.currentTarget.style.borderColor = 'var(--color-blue)')}
+                  onFocus={(e) => (e.currentTarget.style.borderColor = 'var(--gold, #c49818)')}
                   onBlur={(e) => (e.currentTarget.style.borderColor = 'rgba(255,255,255,0.1)')}
                 />
               </div>
@@ -1134,7 +1134,7 @@ const btnPrimario = (disabled: boolean): React.CSSProperties => ({
   fontSize: '13px',
   fontWeight: 700,
   cursor: disabled ? 'not-allowed' : 'pointer',
-  backgroundColor: 'var(--color-blue)',
+  backgroundColor: 'var(--gold, #c49818)',
   color: '#fff',
   opacity: disabled ? 0.4 : 1,
 })
@@ -1187,7 +1187,7 @@ function Campo({
           boxSizing: 'border-box',
           opacity: disabled ? 0.4 : 1,
         }}
-        onFocus={(e) => { if (!disabled) e.currentTarget.style.borderColor = 'var(--color-blue)' }}
+        onFocus={(e) => { if (!disabled) e.currentTarget.style.borderColor = 'var(--gold, #c49818)' }}
         onBlur={(e) => (e.currentTarget.style.borderColor = 'transparent')}
       />
     </div>
@@ -1275,7 +1275,7 @@ function CampoModal({
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}
         style={estiloInputModal}
-        onFocus={(e) => (e.currentTarget.style.borderColor = 'var(--color-blue)')}
+        onFocus={(e) => (e.currentTarget.style.borderColor = 'var(--gold, #c49818)')}
         onBlur={(e) => (e.currentTarget.style.borderColor = 'rgba(255,255,255,0.1)')}
       />
     </div>

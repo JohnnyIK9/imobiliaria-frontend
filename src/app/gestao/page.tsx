@@ -64,7 +64,7 @@ export default function DashboardPage() {
   ]
 
   return (
-    <div className="h-full overflow-y-auto">
+    <div className="h-full overflow-y-auto" style={{ fontFamily: "'DM Sans', sans-serif" }}>
     <div className="p-8 max-w-5xl mx-auto">
       {/* Cabeçalho */}
       <div className="mb-8">
@@ -82,7 +82,7 @@ export default function DashboardPage() {
           <div
             key={card.label}
             className="rounded-xl p-5"
-            style={{ backgroundColor: 'var(--color-green-dark)' }}
+            style={{ backgroundColor: 'var(--paper, #f4f1e6)' }}
           >
             <div
               className="w-10 h-10 rounded-lg flex items-center justify-center mb-4"
@@ -93,11 +93,11 @@ export default function DashboardPage() {
             {carregando ? (
               <div className="h-7 w-16 rounded animate-pulse mb-1" style={{ backgroundColor: 'var(--color-green-mid)' }} />
             ) : (
-              <p className="text-2xl font-extrabold" style={{ color: 'var(--color-white)' }}>
+              <p className="text-2xl font-extrabold" style={{ color: 'var(--ink, #1b3a2f)' }}>
                 {card.valor}
               </p>
             )}
-            <p className="text-xs font-light mt-1" style={{ color: 'var(--color-gray-dark)' }}>
+            <p className="text-xs font-light mt-1" style={{ color: 'var(--sepia, #7a9e88)' }}>
               {card.label}
             </p>
           </div>
@@ -115,7 +115,7 @@ export default function DashboardPage() {
               key={item.href}
               onClick={() => router.push(item.href)}
               className="flex items-center gap-4 rounded-xl p-5 text-left transition-colors hover:brightness-110"
-              style={{ backgroundColor: 'var(--color-green-mid)' }}
+              style={{ backgroundColor: 'var(--paper-2, #eae6d4)' }}
             >
               <div
                 className="flex-shrink-0 w-10 h-10 rounded-lg flex items-center justify-center"
@@ -124,10 +124,10 @@ export default function DashboardPage() {
                 <item.icon size={20} color={item.cor} />
               </div>
               <div>
-                <p className="text-sm font-bold" style={{ color: 'var(--color-white)' }}>
+                <p className="text-sm font-bold" style={{ color: 'var(--ink, #1b3a2f)' }}>
                   {item.label}
                 </p>
-                <p className="text-xs font-light mt-0.5" style={{ color: 'var(--color-gray-dark)' }}>
+                <p className="text-xs font-light mt-0.5" style={{ color: 'var(--sepia, #7a9e88)' }}>
                   {item.desc}
                 </p>
               </div>

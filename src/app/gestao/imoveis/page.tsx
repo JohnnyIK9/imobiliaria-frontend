@@ -547,7 +547,7 @@ export default function ImoveisPage() {
 
   // ── Render ────────────────────────────────────────────────
   return (
-    <div style={{ display: 'flex', height: '100%', overflow: 'hidden' }}>
+    <div style={{ display: 'flex', height: '100%', overflow: 'hidden', fontFamily: "'DM Sans', sans-serif" }}>
       {/* Toast */}
       {toast && (
         <div
@@ -641,7 +641,7 @@ export default function ImoveisPage() {
             <button
               onClick={novoImovel}
               style={{
-                backgroundColor: 'var(--color-blue)',
+                backgroundColor: 'var(--gold, #c49818)',
                 color: '#fff',
                 border: 'none',
                 borderRadius: '7px',
@@ -718,8 +718,8 @@ export default function ImoveisPage() {
               padding: '7px',
               borderRadius: '7px',
               border: 'none',
-              backgroundColor: 'rgba(64,166,244,0.15)',
-              color: '#40A6F4',
+              backgroundColor: 'rgba(196,152,24,0.15)',
+              color: '#c49818',
               fontSize: '12px',
               fontWeight: 700,
               cursor: 'pointer',
@@ -749,8 +749,8 @@ export default function ImoveisPage() {
                   style={{
                     padding: '10px 14px',
                     cursor: 'pointer',
-                    backgroundColor: ativo ? 'rgba(64,166,244,0.1)' : 'transparent',
-                    borderLeft: `3px solid ${ativo ? '#40A6F4' : 'transparent'}`,
+                    backgroundColor: ativo ? 'rgba(196,152,24,0.1)' : 'transparent',
+                    borderLeft: `3px solid ${ativo ? '#c49818' : 'transparent'}`,
                     transition: 'background 0.15s',
                   }}
                 >
@@ -766,7 +766,7 @@ export default function ImoveisPage() {
                   <p style={{ color: 'rgba(255,255,255,0.55)', fontSize: '11px', margin: '0 0 2px 14px' }}>
                     {im.tipo}{im.regiaoNome ? ` · ${im.regiaoNome}` : ''}
                   </p>
-                  <p style={{ color: '#40A6F4', fontSize: '12px', fontWeight: 700, margin: '0 0 0 14px' }}>
+                  <p style={{ color: '#c49818', fontSize: '12px', fontWeight: 700, margin: '0 0 0 14px' }}>
                     {formatarPreco(im.preco)}
                   </p>
                 </div>
@@ -912,7 +912,7 @@ export default function ImoveisPage() {
                                 style={{
                                   position: 'relative', width: '56px', height: '56px',
                                   borderRadius: '6px', overflow: 'hidden', cursor: 'pointer', flexShrink: 0,
-                                  border: `2px solid ${idx === fotoIdx ? '#40A6F4' : 'transparent'}`,
+                                  border: `2px solid ${idx === fotoIdx ? '#c49818' : 'transparent'}`,
                                 }}
                               >
                                 <img
@@ -989,7 +989,7 @@ export default function ImoveisPage() {
                       onClick={handleAdicionarVideo}
                       disabled={adicionandoVideo || !urlVideo.trim()}
                       style={{
-                        backgroundColor: 'rgba(64,166,244,0.15)', color: '#40A6F4',
+                        backgroundColor: 'rgba(196,152,24,0.15)', color: '#c49818',
                         border: 'none', borderRadius: '7px', padding: '8px 12px',
                         fontSize: '12px', fontWeight: 700, whiteSpace: 'nowrap',
                         cursor: adicionandoVideo || !urlVideo.trim() ? 'not-allowed' : 'pointer',
@@ -1138,7 +1138,7 @@ export default function ImoveisPage() {
                   onChange={(e) => setForm((f) => ({ ...f, preco: e.target.value }))}
                   placeholder="Ex: 480000"
                   style={estiloInputForm}
-                  onFocus={(e) => { e.currentTarget.style.borderColor = 'var(--color-blue)' }}
+                  onFocus={(e) => { e.currentTarget.style.borderColor = 'var(--gold, #c49818)' }}
                   onBlur={(e) => { e.currentTarget.style.borderColor = 'rgba(255,255,255,0.1)' }}
                 />
               </CampoForm>
@@ -1153,7 +1153,7 @@ export default function ImoveisPage() {
                     value={form.quartos}
                     onChange={(e) => setForm((f) => ({ ...f, quartos: e.target.value }))}
                     style={estiloInputForm}
-                    onFocus={(e) => { e.currentTarget.style.borderColor = 'var(--color-blue)' }}
+                    onFocus={(e) => { e.currentTarget.style.borderColor = 'var(--gold, #c49818)' }}
                     onBlur={(e) => { e.currentTarget.style.borderColor = 'rgba(255,255,255,0.1)' }}
                   />
                 </CampoForm>
@@ -1165,7 +1165,7 @@ export default function ImoveisPage() {
                     value={form.banheiros}
                     onChange={(e) => setForm((f) => ({ ...f, banheiros: e.target.value }))}
                     style={estiloInputForm}
-                    onFocus={(e) => { e.currentTarget.style.borderColor = 'var(--color-blue)' }}
+                    onFocus={(e) => { e.currentTarget.style.borderColor = 'var(--gold, #c49818)' }}
                     onBlur={(e) => { e.currentTarget.style.borderColor = 'rgba(255,255,255,0.1)' }}
                   />
                 </CampoForm>
@@ -1182,7 +1182,7 @@ export default function ImoveisPage() {
                     onChange={(e) => setForm((f) => ({ ...f, areaM2: e.target.value }))}
                     placeholder="Ex: 120.5"
                     style={estiloInputForm}
-                    onFocus={(e) => { e.currentTarget.style.borderColor = 'var(--color-blue)' }}
+                    onFocus={(e) => { e.currentTarget.style.borderColor = 'var(--gold, #c49818)' }}
                     onBlur={(e) => { e.currentTarget.style.borderColor = 'rgba(255,255,255,0.1)' }}
                   />
                 </CampoForm>
@@ -1194,7 +1194,7 @@ export default function ImoveisPage() {
                     value={form.vagas}
                     onChange={(e) => setForm((f) => ({ ...f, vagas: e.target.value }))}
                     style={estiloInputForm}
-                    onFocus={(e) => { e.currentTarget.style.borderColor = 'var(--color-blue)' }}
+                    onFocus={(e) => { e.currentTarget.style.borderColor = 'var(--gold, #c49818)' }}
                     onBlur={(e) => { e.currentTarget.style.borderColor = 'rgba(255,255,255,0.1)' }}
                   />
                 </CampoForm>
@@ -1208,7 +1208,7 @@ export default function ImoveisPage() {
                   onChange={(e) => setForm((f) => ({ ...f, endereco: e.target.value }))}
                   placeholder="Ex: Rua das Flores, 123"
                   style={estiloInputForm}
-                  onFocus={(e) => { e.currentTarget.style.borderColor = 'var(--color-blue)' }}
+                  onFocus={(e) => { e.currentTarget.style.borderColor = 'var(--gold, #c49818)' }}
                   onBlur={(e) => { e.currentTarget.style.borderColor = 'rgba(255,255,255,0.1)' }}
                 />
               </CampoForm>
@@ -1226,7 +1226,7 @@ export default function ImoveisPage() {
                     minHeight: '80px',
                     fontFamily: 'inherit',
                   }}
-                  onFocus={(e) => { e.currentTarget.style.borderColor = 'var(--color-blue)' }}
+                  onFocus={(e) => { e.currentTarget.style.borderColor = 'var(--gold, #c49818)' }}
                   onBlur={(e) => { e.currentTarget.style.borderColor = 'rgba(255,255,255,0.1)' }}
                 />
               </CampoForm>
@@ -1269,7 +1269,7 @@ export default function ImoveisPage() {
                   fontSize: '13px',
                   fontWeight: 700,
                   cursor: salvando ? 'not-allowed' : 'pointer',
-                  backgroundColor: 'var(--color-blue)',
+                  backgroundColor: 'var(--gold, #c49818)',
                   color: '#fff',
                   opacity: salvando ? 0.5 : 1,
                 }}
@@ -1298,8 +1298,8 @@ const estiloSpinner: React.CSSProperties = {
   width: '28px',
   height: '28px',
   borderRadius: '50%',
-  border: '3px solid rgba(64,166,244,0.2)',
-  borderTopColor: '#40A6F4',
+  border: '3px solid rgba(196,152,24,0.2)',
+  borderTopColor: '#c49818',
   animation: 'spin 0.8s linear infinite',
 }
 

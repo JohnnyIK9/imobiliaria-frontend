@@ -16,6 +16,7 @@ const MapaPublico = dynamic(() => import('@/components/public/MapaPublico'), { s
 type Cidade = {
   id: number
   nome: string
+  uf: string
   latCentro: number
   lngCentro: number
   zoomPadrao: number
@@ -54,13 +55,15 @@ const FILTROS_VAZIOS: Filtros = {
 
 // ── Helpers ────────────────────────────────────────────────
 function formatarPreco(v: number) {
-  return v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL', minimumFractionDigits: 0, maximumFractionDigits: 0 })
+  return v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL', minimumFractionDigits: 2, maximumFractionDigits: 2 })
 }
 
 function normalizarCidade(r: Record<string, unknown>): Cidade {
+  const estado = r.estado as Record<string, unknown> | null
   return {
     id: r.id as number,
     nome: r.nome as string,
+    uf: (estado?.id ?? '') as string,
     latCentro: (r.latCentro ?? r.lat_centro ?? -14.235) as number,
     lngCentro: (r.lngCentro ?? r.lng_centro ?? -51.925) as number,
     zoomPadrao: (r.zoomPadrao ?? r.zoom_padrao ?? 13) as number,
@@ -113,7 +116,9 @@ export default function HomePage() {
   const [cidades, setCidades] = useState<Cidade[]>([])
   const [cidadeSel, setCidadeSel] = useState<Cidade | null>(null)
   const [regioes, setRegioes] = useState<RegiaoMapa[]>([])
+  const regioesPadraoRef = useRef<RegiaoMapa[]>([])
   const [imoveis, setImoveis] = useState<ImovelCard[]>([])
+
   const [carregando, setCarregando] = useState(false)
   const [filtros, setFiltros] = useState<Filtros>(FILTROS_VAZIOS)
   const [filtrosPendentes, setFiltrosPendentes] = useState<Filtros>(FILTROS_VAZIOS)
@@ -153,7 +158,9 @@ export default function HomePage() {
     ])
     if (rRegioes.ok) {
       const raw: Record<string, unknown>[] = await rRegioes.json()
-setRegioes(raw.map(normalizarRegiao))
+      const regioesMapeadas = raw.map(normalizarRegiao)
+      regioesPadraoRef.current = regioesMapeadas
+      setRegioes(regioesMapeadas)
     }
     await carregarImoveis({ cidadeId: cidade.id })
   }
@@ -165,7 +172,25 @@ setRegioes(raw.map(normalizarRegiao))
       const res = await getImoveisPublicosApi(params)
       if (res.ok) {
         const raw: Record<string, unknown>[] = await res.json()
-        setImoveis(raw.map(normalizarImovel))
+        const lista = raw.map(normalizarImovel)
+        setImoveis(lista)
+
+        // Recalcular contadores por região com base nos resultados filtrados
+        const contadores: Record<number, number> = {}
+        lista.forEach((im) => {
+          if (im.regiao) {
+            contadores[im.regiao.id] = (contadores[im.regiao.id] ?? 0) + 1
+          }
+        })
+        const temFiltro = params && (params.tipo || params.precoMin || params.precoMax || params.quartos || params.vagas)
+        if (temFiltro) {
+          setRegioes(regioesPadraoRef.current.map((r) => ({
+            ...r,
+            totalImoveis: contadores[r.id] ?? 0,
+          })))
+        } else {
+          setRegioes(regioesPadraoRef.current)
+        }
       }
     } finally {
       setCarregando(false)
@@ -256,13 +281,13 @@ setRegioes(raw.map(normalizarRegiao))
 
   // ── Render ────────────────────────────────────────────────
   return (
-    <div style={{ height: '100vh', overflow: 'hidden', display: 'flex', flexDirection: 'column', backgroundColor: 'var(--color-black)', fontFamily: 'Lato, sans-serif' }}>
+    <div style={{ height: '100vh', overflow: 'hidden', display: 'flex', flexDirection: 'column', backgroundColor: 'var(--color-black)', fontFamily: "'DM Sans', sans-serif" }}>
 
       {/* ── Header ── */}
       <header style={{
-        backgroundColor: 'var(--color-green-dark)',
-        borderBottom: '1px solid rgba(255,255,255,0.08)',
-        padding: '0 24px',
+        backgroundColor: 'var(--ink, #1b3a2f)',
+        borderBottom: '3px solid var(--gold, #c49818)',
+        padding: '0 24px 2px 24px',
         height: '60px',
         display: 'flex',
         alignItems: 'center',
@@ -273,42 +298,56 @@ setRegioes(raw.map(normalizarRegiao))
       }}>
         {/* Logo */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/svg/white-02.svg" alt="Logo" style={{ width: '34px', height: '34px', objectFit: 'contain' }} />
-          <span style={{ color: 'var(--color-white)', fontSize: '15px', fontWeight: 800, lineHeight: '1.2' }}>
-            Imobiliária<br />
-            <span style={{ fontWeight: 300, fontSize: '12px' }}>do Professor</span>
-          </span>
+          <div style={{ border: '1px solid var(--gold, #c49818)', padding: '0 18px', display: 'flex', alignItems: 'center' }}>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/svg/white-02.svg" alt="Logo" style={{ width: '48px', height: '48px', objectFit: 'contain' }} />
+          </div>
+          <div style={{ lineHeight: '1.2' }}>
+            <div style={{ fontSize: '13px', fontWeight: 800, color: 'var(--gold, #c49818)', letterSpacing: '0.08em', textTransform: 'uppercase' }}>Imobiliária</div>
+            <div style={{ fontSize: '20px', fontWeight: 800, lineHeight: '1.1', fontFamily: "'Playfair Display', serif" }}>
+              <span style={{ color: '#ffffff' }}>do </span>
+              <span style={{ color: 'var(--gold, #c49818)', fontStyle: 'italic' }}>Professor</span>
+            </div>
+          </div>
         </div>
 
-        {/* Seletor de cidade */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-        <span style={{ color: 'rgba(255,255,255,0.6)', fontSize: '13px', fontWeight: 600, whiteSpace: 'nowrap' }}>Cidade:</span>
-        <select
-          value={cidadeSel?.id ?? ''}
-          onChange={(e) => {
-            const cidade = cidades.find((c) => c.id === Number(e.target.value))
-            if (cidade) selecionarCidade(cidade)
-          }}
-          style={{
-            backgroundColor: 'var(--color-green-mid)',
-            color: 'var(--color-white)',
-            border: '1px solid rgba(255,255,255,0.12)',
-            borderRadius: '8px',
-            padding: '8px 14px',
-            fontSize: '13px',
-            fontWeight: 700,
-            outline: 'none',
-            cursor: 'pointer',
-            fontFamily: 'Lato, sans-serif',
-          }}
-        >
-          {cidades.map((c) => (
-            <option key={c.id} value={c.id} style={{ backgroundColor: '#374C4B' }}>
-              {c.nome}
-            </option>
-          ))}
-        </select>
+        {/* Seletor de cidade — alinhado com o painel lateral */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '3px', width: '390px', alignItems: 'center', justifyContent: 'center', paddingLeft: '40px' }}>
+          <span style={{ color: 'var(--gold, #c49818)', fontSize: '9px', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase' }}>Cidade</span>
+          <div style={{ position: 'relative', width: '180px' }}>
+            <select
+              value={cidadeSel?.id ?? ''}
+              onChange={(e) => {
+                const cidade = cidades.find((c) => c.id === Number(e.target.value))
+                if (cidade) selecionarCidade(cidade)
+              }}
+              style={{
+                backgroundColor: 'transparent',
+                color: 'var(--color-white)',
+                border: '1.5px solid var(--gold, #c49818)',
+                borderRadius: '0',
+                padding: '5px 28px 5px 10px',
+                fontSize: '12px',
+                fontWeight: 700,
+                outline: 'none',
+                cursor: 'pointer',
+                fontFamily: 'Lato, sans-serif',
+                width: '100%',
+                appearance: 'none',
+                WebkitAppearance: 'none',
+              }}
+            >
+              {cidades.map((c) => (
+                <option key={c.id} value={c.id} style={{ backgroundColor: '#1b3a2f', color: '#f4f1e6' }}>
+                  {c.nome}{c.uf ? ` — ${c.uf}` : ''}
+                </option>
+              ))}
+            </select>
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--gold, #c49818)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"
+              style={{ position: 'absolute', right: '10px', top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none' }}>
+              <polyline points="6 9 12 15 18 9" />
+            </svg>
+          </div>
         </div>
       </header>
 
@@ -361,11 +400,11 @@ setRegioes(raw.map(normalizarRegiao))
 
         {/* Painel lateral — desktop 30% */}
         <div style={{
-          width: '360px',
+          width: '390px',
           flexShrink: 0,
           height: '100%',
-          backgroundColor: 'var(--color-green-dark)',
-          borderLeft: '1px solid rgba(255,255,255,0.08)',
+          backgroundColor: 'var(--paper, #f4f1e6)',
+          borderLeft: '2px solid var(--gold, #c49818)',
           display: 'flex',
           flexDirection: 'column',
           overflow: 'hidden',
@@ -380,14 +419,14 @@ setRegioes(raw.map(normalizarRegiao))
               style={{
                 width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
                 backgroundColor: 'var(--color-green-mid)', border: '1px solid rgba(255,255,255,0.1)',
-                borderRadius: '8px', padding: '9px 14px', cursor: 'pointer',
+                borderRadius: '0', padding: '9px 14px', cursor: 'pointer',
                 color: 'var(--color-white)', fontSize: '13px', fontWeight: 700, fontFamily: 'Lato, sans-serif',
               }}
             >
               <span>
-                Filtros{totalFiltros > 0 && <span style={{ color: 'var(--color-blue)', marginLeft: '6px', fontSize: '12px' }}>{totalFiltros} ativo{totalFiltros !== 1 ? 's' : ''}</span>}
+                Filtrar imóveis{totalFiltros > 0 && <span style={{ color: 'var(--gold, #c49818)', marginLeft: '6px', fontSize: '12px' }}>{totalFiltros} ativo{totalFiltros !== 1 ? 's' : ''}</span>}
               </span>
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--gold, #c49818)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"
                 style={{ transform: filtrosAbertos ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.2s' }}>
                 <polyline points="6 9 12 15 18 9" />
               </svg>
@@ -397,7 +436,7 @@ setRegioes(raw.map(normalizarRegiao))
             {filtrosAbertos && (
               <div style={{
                 position: 'absolute', top: '56px', left: 0, right: 0,
-                backgroundColor: 'var(--color-green-dark)',
+                backgroundColor: 'var(--ink-soft, #2e5444)',
                 borderBottom: '1px solid rgba(255,255,255,0.1)',
                 zIndex: 200, padding: '12px',
                 boxShadow: '0 8px 24px rgba(0,0,0,0.4)',
@@ -412,6 +451,12 @@ setRegioes(raw.map(normalizarRegiao))
                 />
               </div>
             )}
+          </div>
+
+          {/* Contador */}
+          <div style={{ padding: '10px 16px', borderBottom: '1px solid var(--paper-3, #dddac8)', flexShrink: 0, display: 'flex', alignItems: 'baseline', justifyContent: 'space-between' }}>
+            <span style={{ color: '#000', fontSize: '16px', fontWeight: 800 }}>Imóveis disponíveis</span>
+            <span style={{ color: '#000', fontSize: '11px', fontWeight: 500 }}>{imoveis.length} encontrado{imoveis.length !== 1 ? 's' : ''}</span>
           </div>
 
           {/* Lista de imóveis */}
@@ -445,7 +490,7 @@ setRegioes(raw.map(normalizarRegiao))
           <div
             style={{
               position: 'absolute', bottom: 0, left: 0, right: 0,
-              backgroundColor: 'var(--color-green-dark)',
+              backgroundColor: 'var(--paper, #f4f1e6)',
               borderRadius: '16px 16px 0 0',
               maxHeight: '80vh',
               overflow: 'auto',
@@ -478,7 +523,7 @@ setRegioes(raw.map(normalizarRegiao))
         >
           <div
             style={{
-              backgroundColor: 'var(--color-green-dark)',
+              backgroundColor: 'var(--paper, #f4f1e6)',
               borderRadius: '14px',
               width: '100%',
               maxWidth: '680px',
@@ -587,40 +632,50 @@ setRegioes(raw.map(normalizarRegiao))
 
             {/* Informações */}
             <div style={{ padding: '16px 20px 24px' }}>
-              <p style={{ color: 'var(--color-blue)', fontSize: '26px', fontWeight: 800, margin: '0 0 4px' }}>
-                {formatarPreco(imovelModal.preco)}
-              </p>
-              <p style={{ color: 'rgba(255,255,255,0.45)', fontSize: '12px', fontWeight: 700, margin: '0 0 12px', letterSpacing: '0.05em' }}>
-                {imovelModal.codigo}
-              </p>
-
-              <p style={{ color: 'rgba(255,255,255,0.7)', fontSize: '14px', margin: '0 0 16px', display: 'flex', alignItems: 'center', gap: '6px' } as React.CSSProperties}>
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
-                {imovelModal.regiao?.nome ? `${imovelModal.regiao.nome} · ` : ''}{imovelModal.cidade.nome}
-              </p>
+              <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', flexWrap: 'wrap', gap: '8px', marginBottom: '12px' }}>
+                <p style={{ color: 'var(--gold, #c49818)', fontSize: '26px', fontWeight: 800, margin: 0 }}>
+                  {formatarPreco(imovelModal.preco)}
+                </p>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                  <span style={{ color: '#000', fontSize: '12px', fontWeight: 700, letterSpacing: '0.05em' }}>
+                    {imovelModal.codigo}
+                  </span>
+                  <span style={{ color: '#000', fontSize: '13px', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '4px', fontFamily: "'IM Fell English', serif", fontStyle: 'italic' }}>
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#000" strokeWidth="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+                    {imovelModal.regiao?.nome ? `${imovelModal.regiao.nome} · ` : ''}{imovelModal.cidade.nome}
+                  </span>
+                </div>
+              </div>
 
               {/* Grid specs */}
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '10px', marginBottom: '16px' }}>
                 {[
-                  { label: 'Quartos', valor: imovelModal.quartos, emoji: '🛏' },
-                  { label: 'Banheiros', valor: imovelModal.banheiros, emoji: '🚿' },
-                  { label: 'Vagas', valor: imovelModal.vagas, emoji: '🚗' },
-                  { label: 'Área', valor: `${imovelModal.areaM2}m²`, emoji: '📐' },
+                  { label: 'Quartos', valor: imovelModal.quartos },
+                  { label: 'Banheiros', valor: imovelModal.banheiros },
+                  { label: 'Vagas', valor: imovelModal.vagas },
+                  { label: 'Área', valor: `${imovelModal.areaM2}m²` },
                 ].map((s) => (
                   <div key={s.label} style={{
-                    backgroundColor: 'var(--color-green-mid)',
-                    borderRadius: '10px', padding: '10px 8px',
+                    backgroundColor: 'var(--paper-2, #eae6d4)',
+                    border: '1px solid var(--paper-3, #dddac8)',
+                    borderRadius: '0', padding: '12px 8px',
                     textAlign: 'center',
                   }}>
-                    <p style={{ margin: '0 0 2px', fontSize: '18px' }}>{s.emoji}</p>
-                    <p style={{ margin: 0, color: 'var(--color-white)', fontSize: '14px', fontWeight: 800 }}>{s.valor}</p>
-                    <p style={{ margin: 0, color: 'rgba(255,255,255,0.4)', fontSize: '11px' }}>{s.label}</p>
+                    <p style={{ margin: '0 0 4px', color: 'var(--ink, #1b3a2f)', fontSize: '26px', fontWeight: 800, lineHeight: 1, fontFamily: "'DM Sans', sans-serif" }}>{s.valor}</p>
+                    <p style={{ margin: 0, color: 'var(--sepia, #7a9e88)', fontSize: '11px', fontWeight: 500, textTransform: 'uppercase', letterSpacing: '0.06em', fontFamily: "'DM Sans', sans-serif" }}>{s.label}</p>
                   </div>
                 ))}
               </div>
 
+              {/* Separador */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px', margin: '16px 0' }}>
+                <div style={{ flex: 1, height: '1px', backgroundColor: 'var(--paper-3, #dddac8)' }} />
+                <span style={{ color: 'var(--gold, #c49818)', fontSize: '10px' }}>◆</span>
+                <div style={{ flex: 1, height: '1px', backgroundColor: 'var(--paper-3, #dddac8)' }} />
+              </div>
+
               {imovelModal.descricao && (
-                <p style={{ color: 'rgba(255,255,255,0.65)', fontSize: '14px', lineHeight: '1.6', margin: '0 0 20px' }}>
+                <p style={{ color: '#000', fontSize: '14px', lineHeight: '1.6', margin: '0 0 20px' }}>
                   {imovelModal.descricao}
                 </p>
               )}
@@ -665,7 +720,7 @@ setRegioes(raw.map(normalizarRegiao))
         <a
           href={`https://wa.me/${WA_NUMBER}`}
           target="_blank" rel="noopener noreferrer"
-          style={{ display: 'flex', alignItems: 'center', gap: '8px', textDecoration: 'none', color: '#25D366', fontSize: '13px', fontWeight: 700 }}
+          style={{ display: 'flex', alignItems: 'center', gap: '8px', textDecoration: 'none', color: '#ffffff', fontSize: '13px', fontWeight: 700 }}
         >
           <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 0 1-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 0 1-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 0 1 2.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0 0 12.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 0 0 5.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 0 0-3.48-8.413z"/></svg>
           (17) 99999-9999
@@ -675,7 +730,7 @@ setRegioes(raw.map(normalizarRegiao))
         <a
           href="https://www.facebook.com/imobiliariadoprofessor/"
           target="_blank" rel="noopener noreferrer"
-          style={{ display: 'flex', alignItems: 'center', gap: '6px', textDecoration: 'none', color: 'rgba(255,255,255,0.55)', fontSize: '13px' }}
+          style={{ display: 'flex', alignItems: 'center', gap: '6px', textDecoration: 'none', color: '#ffffff', fontSize: '13px' }}
         >
           <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M24 12.073C24 5.405 18.627 0 12 0S0 5.405 0 12.073C0 18.1 4.388 23.094 10.125 24v-8.437H7.078v-3.49h3.047V9.41c0-3.025 1.792-4.697 4.533-4.697 1.312 0 2.686.236 2.686.236v2.97h-1.514c-1.491 0-1.956.93-1.956 1.874v2.25h3.328l-.532 3.49h-2.796V24C19.612 23.094 24 18.1 24 12.073z"/></svg>
           imobiliariadoprofessor
@@ -685,7 +740,7 @@ setRegioes(raw.map(normalizarRegiao))
         <a
           href="https://www.instagram.com/ImobiliariaDoProfessor"
           target="_blank" rel="noopener noreferrer"
-          style={{ display: 'flex', alignItems: 'center', gap: '6px', textDecoration: 'none', color: 'rgba(255,255,255,0.55)', fontSize: '13px' }}
+          style={{ display: 'flex', alignItems: 'center', gap: '6px', textDecoration: 'none', color: '#ffffff', fontSize: '13px' }}
         >
           <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 1.366.062 2.633.334 3.608 1.308.975.975 1.246 2.242 1.308 3.608.058 1.266.07 1.646.07 4.85s-.012 3.584-.07 4.85c-.062 1.366-.334 2.633-1.308 3.608-.975.975-2.242 1.246-3.608 1.308-1.266.058-1.646.07-4.85.07s-3.584-.012-4.85-.07c-1.366-.062-2.633-.334-3.608-1.308-.975-.975-1.246-2.242-1.308-3.608C2.175 15.584 2.163 15.204 2.163 12s.012-3.584.07-4.85c.062-1.366.334-2.633 1.308-3.608C4.516 2.497 5.783 2.226 7.15 2.163 8.416 2.105 8.796 2.163 12 2.163zm0-2.163C8.741 0 8.333.014 7.053.072 5.197.157 3.355.745 2.014 2.086.674 3.426.086 5.268 0 7.124-.014 8.333 0 8.741 0 12c0 3.259.014 3.668.072 4.948.085 1.856.673 3.698 2.014 5.038 1.34 1.341 3.182 1.929 5.038 2.014C8.333 23.986 8.741 24 12 24c3.259 0 3.668-.014 4.948-.072 1.856-.085 3.698-.673 5.038-2.014 1.341-1.34 1.929-3.182 2.014-5.038C23.986 15.668 24 15.259 24 12c0-3.259-.014-3.668-.072-4.948-.085-1.856-.673-3.698-2.014-5.038C20.574.745 18.732.157 16.876.072 15.667.014 15.259 0 12 0zm0 5.838a6.162 6.162 0 1 0 0 12.324 6.162 6.162 0 0 0 0-12.324zM12 16a4 4 0 1 1 0-8 4 4 0 0 1 0 8zm6.406-11.845a1.44 1.44 0 1 0 0 2.881 1.44 1.44 0 0 0 0-2.881z"/></svg>
           @ImobiliariaDoProfessor
@@ -694,8 +749,11 @@ setRegioes(raw.map(normalizarRegiao))
         </div>
 
         {/* Endereço */}
-        <p style={{ margin: 0, color: 'rgba(255,255,255,0.35)', fontSize: '12px' }}>
-          © {new Date().getFullYear()} Imobiliária do Professor — Rua Rio de Janeiro, 3708, Centro - Votuporanga - SP
+        <p style={{ margin: 0, color: '#ffffff', fontSize: '12px' }}>
+          © {new Date().getFullYear()} Imobiliária do Professor —{' '}
+          <a href="https://maps.app.goo.gl/6dC2AV9rVV8uYHwUA" target="_blank" rel="noopener noreferrer" style={{ color: '#ffffff', textDecoration: 'underline' }}>
+            Rua Rio de Janeiro, 3708, Centro - Votuporanga - SP
+          </a>
         </p>
       </footer>
 
@@ -728,7 +786,7 @@ function PainelFiltros({ regioes, filtros, onChange, onBuscar, onLimpar, totalFi
     <div style={{ flexShrink: 0 }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px' }}>
         <span style={{ color: 'var(--color-white)', fontSize: '14px', fontWeight: 800 }}>
-          Filtros{totalFiltros > 0 && <span style={{ color: 'var(--color-blue)', marginLeft: '6px', fontSize: '12px' }}>{totalFiltros} ativo{totalFiltros !== 1 ? 's' : ''}</span>}
+          {totalFiltros > 0 && <span style={{ color: 'var(--gold, #c49818)', fontSize: '12px' }}>{totalFiltros} ativo{totalFiltros !== 1 ? 's' : ''}</span>}
         </span>
         {totalFiltros > 0 && (
           <button onClick={onLimpar} style={{ background: 'none', border: 'none', color: 'rgba(255,255,255,0.4)', fontSize: '12px', cursor: 'pointer', fontFamily: 'Lato, sans-serif' }}>
@@ -795,57 +853,80 @@ function CardImovel({ imovel, onClick }: { imovel: ImovelCard; onClick: () => vo
     <div
       onClick={onClick}
       style={{
-        margin: '0 10px 6px',
-        padding: '12px',
+        margin: '0 10px 8px',
         backgroundColor: 'var(--color-green-mid)',
         borderRadius: '10px',
         cursor: 'pointer',
         transition: 'opacity 0.15s',
+        overflow: 'hidden',
         display: 'flex',
-        gap: '12px',
+        gap: '0',
       }}
       onMouseOver={(e) => (e.currentTarget.style.opacity = '0.85')}
       onMouseOut={(e) => (e.currentTarget.style.opacity = '1')}
     >
-      {/* Thumbnail */}
-      <div style={{
-        width: '72px', height: '72px', borderRadius: '8px',
-        backgroundColor: 'var(--color-green-dark)',
-        flexShrink: 0, overflow: 'hidden',
-        display: 'flex', alignItems: 'center', justifyContent: 'center',
-      }}>
+      {/* Foto */}
+      <div style={{ position: 'relative', width: '96px', minHeight: '96px', flexShrink: 0, backgroundColor: 'var(--color-green-dark)' }}>
         {imovel.fotoCapaSrc ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img src={imovel.fotoCapaSrc} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
         ) : (
-          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.15)" strokeWidth="1.5">
-            <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
-            <polyline points="9 22 9 12 15 12 15 22" />
-          </svg>
+          <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.15)" strokeWidth="1.5">
+              <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
+              <polyline points="9 22 9 12 15 12 15 22" />
+            </svg>
+          </div>
         )}
+        {/* Badge tipo */}
+        <span style={{
+          position: 'absolute', bottom: '5px', left: '5px',
+          backgroundColor: 'rgba(0,0,0,0.6)', color: '#fff',
+          fontSize: '9px', fontWeight: 800, padding: '1px 6px',
+          borderRadius: '3px', letterSpacing: '0.06em', textTransform: 'uppercase', fontFamily: 'Lato, sans-serif',
+        }}>
+          {imovel.tipo}
+        </span>
       </div>
 
       {/* Info */}
-      <div style={{ flex: 1, minWidth: 0 }}>
-        <p style={{ color: 'var(--color-blue)', fontSize: '15px', fontWeight: 800, margin: '0 0 2px' }}>
+      <div style={{ padding: '8px 10px', flex: 1, minWidth: 0 }}>
+        <p style={{ color: 'var(--gold, #c49818)', fontSize: '15px', fontWeight: 800, margin: '0 0 2px' }}>
           {formatarPreco(imovel.preco)}
         </p>
-        <p style={{ color: 'var(--color-white)', fontSize: '13px', fontWeight: 700, margin: '0 0 4px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+        <p style={{ color: 'var(--color-white)', fontSize: '13px', fontWeight: 700, margin: '0 0 8px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
           {imovel.regiao?.nome ? `${imovel.regiao.nome} — ` : ''}{imovel.tipo}
         </p>
-        <p style={{ color: 'rgba(255,255,255,0.5)', fontSize: '11px', margin: '0 0 4px' }}>
-          🛏 {imovel.quartos} &nbsp;🚿 {imovel.banheiros} &nbsp;🚗 {imovel.vagas} &nbsp;📐 {imovel.areaM2}m²
-        </p>
-        <span style={{
-          backgroundColor: 'rgba(64,166,244,0.12)',
-          color: '#40A6F4', fontSize: '10px', fontWeight: 800,
-          padding: '2px 7px', borderRadius: '5px', letterSpacing: '0.04em',
-        }}>
-          {imovel.codigo}
-        </span>
+
+        {/* Badges atributos */}
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '5px', marginBottom: '8px' }}>
+          {imovel.quartos > 0 && <span style={estiloBadge}>{imovel.quartos} qtos</span>}
+          {imovel.banheiros > 0 && <span style={estiloBadge}>{imovel.banheiros} bnh</span>}
+          {imovel.vagas > 0 && <span style={estiloBadge}>{imovel.vagas} vagas</span>}
+          {imovel.areaM2 > 0 && <span style={estiloBadge}>{imovel.areaM2} m²</span>}
+        </div>
+
+        {/* Rodapé do card */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+          {imovel.regiao?.nome && (
+            <span style={{ color: 'var(--gold, #c49818)', fontSize: '10px', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '4px' }}>
+              <span style={{ fontSize: '8px' }}>◆</span>{imovel.regiao.nome.toUpperCase()}
+            </span>
+          )}
+          {imovel.regiao?.nome && <span style={{ color: 'rgba(255,255,255,0.3)', fontSize: '10px' }}>·</span>}
+          <span style={{ color: '#fff', fontSize: '10px', fontWeight: 800 }}>{imovel.codigo}</span>
+        </div>
       </div>
     </div>
   )
+}
+
+const estiloBadge: React.CSSProperties = {
+  backgroundColor: 'rgba(255,255,255,0.08)',
+  color: 'rgba(255,255,255,0.75)',
+  fontSize: '11px', fontWeight: 600,
+  padding: '3px 8px', borderRadius: '5px',
+  border: '1px solid rgba(255,255,255,0.1)',
 }
 
 // ── Estilos ────────────────────────────────────────────────

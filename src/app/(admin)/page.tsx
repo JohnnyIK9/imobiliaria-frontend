@@ -61,7 +61,6 @@ export default function DashboardPage() {
   const atalhos = [
     { label: 'Gerenciar Imóveis', desc: 'Adicionar, editar e publicar imóveis', href: '/imoveis', icon: HomeIcon, cor: '#40A6F4' },
     { label: 'Gerenciar Regiões', desc: 'Desenhar e editar regiões no mapa', href: '/regioes', icon: MapIcon, cor: '#4ADE80' },
-    { label: 'Orçamento', desc: 'Visualizar proposta comercial', href: '/orcamento', icon: ClipboardIcon, cor: '#FACC15' },
   ]
 
   return (

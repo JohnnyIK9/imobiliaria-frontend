@@ -65,7 +65,6 @@ function AdminShell({ usuario, children }: { usuario: { nome: string; papel: str
     { href: '/imoveis', label: 'Imóveis', icon: HomeIcon },
     { href: '/regioes', label: 'Regiões', icon: MapIcon },
     ...(usuario.papel === 'adm' ? [{ href: '/usuarios', label: 'Usuários', icon: UserIcon }] : []),
-    { href: '/orcamento', label: 'Orçamento', icon: ClipboardIcon },
   ]
 
   function isActive(href: string) {

@@ -54,6 +54,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 function AdminShell({ usuario, children }: { usuario: { nome: string; papel: string }; children: React.ReactNode }) {
   const pathname = usePathname()
   const router = useRouter()
+  const [recolhido, setRecolhido] = useState(false)
 
   async function handleLogout() {
     await logoutApi().catch(() => {})
@@ -73,81 +74,150 @@ function AdminShell({ usuario, children }: { usuario: { nome: string; papel: str
   }
 
   return (
-    <div className="flex h-screen overflow-hidden" style={{ backgroundColor: 'var(--color-black)', fontFamily: "'DM Sans', sans-serif" }}>
+    <div className="flex h-screen" style={{ backgroundColor: 'var(--paper, #f4f1e6)', fontFamily: "'DM Sans', sans-serif", overflow: 'hidden' }}>
       {/* Sidebar */}
       <aside
-        className="w-60 flex-shrink-0 flex flex-col"
-        style={{ backgroundColor: 'var(--color-green-dark)' }}
+        className="flex-shrink-0 flex flex-col"
+        style={{
+          backgroundColor: 'var(--ink, #1b3a2f)',
+          width: recolhido ? '64px' : '240px',
+          transition: 'width 0.2s ease',
+          overflow: 'visible',
+          position: 'relative',
+          zIndex: 20,
+        }}
       >
+        {/* Aba de toggle na borda direita */}
+        <button
+          onClick={() => setRecolhido((v) => !v)}
+          title={recolhido ? 'Expandir menu' : 'Recolher menu'}
+          style={{
+            position: 'absolute',
+            top: '50%',
+            right: '-14px',
+            transform: 'translateY(-50%)',
+            zIndex: 30,
+            width: '14px',
+            height: '48px',
+            backgroundColor: 'var(--ink, #1b3a2f)',
+            border: '1px solid var(--gold, #c49818)',
+            borderLeft: 'none',
+            borderRadius: '0 6px 6px 0',
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: 0,
+            transition: 'background 0.15s',
+          }}
+          onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = 'rgba(196,152,24,0.25)')}
+          onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'var(--ink, #1b3a2f)')}
+        >
+          <svg
+            width="10"
+            height="10"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="var(--gold, #c49818)"
+            strokeWidth="2.5"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            style={{ transition: 'transform 0.2s', transform: recolhido ? 'rotate(180deg)' : 'none' }}
+          >
+            <polyline points="15 18 9 12 15 6" />
+          </svg>
+        </button>
+
         {/* Logo */}
-        <div className="px-6 py-5 border-b" style={{ borderColor: 'rgba(255,255,255,0.08)', borderBottom: '3px solid var(--gold, #c49818)' }}>
-          <div className="flex items-center gap-3">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/svg/white-02.svg" alt="Logo" className="flex-shrink-0 w-8 h-8" style={{ objectFit: 'contain' }} />
-            <span className="text-sm font-bold leading-tight" style={{ color: 'var(--color-white)' }}>
-              Imobiliária<br />do Professor
-            </span>
-          </div>
+        <div style={{ borderBottom: '3px solid var(--gold, #c49818)', padding: recolhido ? '12px 0' : '16px 20px', display: 'flex', alignItems: 'center', justifyContent: recolhido ? 'center' : 'flex-start', gap: '8px' }}>
+          {!recolhido && (
+            <div className="flex items-center gap-3">
+              <div style={{ border: '1px solid var(--gold, #c49818)', padding: '0 10px', display: 'flex', alignItems: 'center' }}>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src="/svg/white-02.svg" alt="Logo" style={{ objectFit: 'contain', width: '48px', height: '48px' }} />
+              </div>
+              <div style={{ lineHeight: '1.2' }}>
+                <div style={{ fontSize: '11px', fontWeight: 800, color: 'var(--gold, #c49818)', letterSpacing: '0.08em', textTransform: 'uppercase' }}>Imobiliária</div>
+                <div style={{ fontSize: '17px', fontWeight: 800, lineHeight: '1.1', fontFamily: "'Playfair Display', serif" }}>
+                  <span style={{ color: '#ffffff' }}>do </span>
+                  <span style={{ color: 'var(--gold, #c49818)', fontStyle: 'italic' }}>Professor</span>
+                </div>
+              </div>
+            </div>
+          )}
+          {recolhido && (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src="/svg/white-02.svg" alt="Logo" style={{ objectFit: 'contain', width: '32px', height: '32px' }} />
+          )}
         </div>
 
         {/* Nav */}
-        <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
+        <nav className="flex-1 py-4 overflow-y-auto" style={{ padding: recolhido ? '16px 0' : '16px 12px' }}>
           {navItems.map((item) => {
             const active = isActive(item.href)
             return (
               <button
                 key={item.href}
                 onClick={() => router.push(item.href)}
-                className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-bold transition-colors text-left"
+                title={recolhido ? item.label : undefined}
+                className="w-full flex items-center text-sm font-bold transition-colors"
                 style={{
+                  gap: recolhido ? '0' : '12px',
+                  justifyContent: recolhido ? 'center' : 'flex-start',
+                  padding: recolhido ? '10px 0' : '8px 12px',
+                  borderRadius: recolhido ? '0' : '8px',
                   backgroundColor: active ? 'rgba(196,152,24,0.15)' : 'transparent',
                   color: active ? 'var(--gold, #c49818)' : 'rgba(255,255,255,0.6)',
+                  marginBottom: '2px',
                 }}
               >
                 <item.icon size={18} color={active ? '#c49818' : 'rgba(255,255,255,0.5)'} />
-                {item.label}
+                {!recolhido && item.label}
               </button>
             )
           })}
         </nav>
 
         {/* Usuário + Sair */}
-        <div className="px-4 py-4 border-t space-y-3" style={{ borderColor: 'rgba(255,255,255,0.08)' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+        <div style={{ borderTop: '1px solid rgba(255,255,255,0.08)', padding: recolhido ? '12px 0' : '12px 16px', display: 'flex', flexDirection: 'column', gap: '10px', alignItems: recolhido ? 'center' : 'stretch' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', justifyContent: recolhido ? 'center' : 'flex-start' }}>
             <div
+              title={recolhido ? usuario.nome : undefined}
               style={{
-                width: '32px',
-                height: '32px',
-                borderRadius: '50%',
-                flexShrink: 0,
-                backgroundColor: 'var(--gold, #c49818)',
-                color: '#fff',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                fontSize: '12px',
-                fontWeight: 700,
-                lineHeight: 1,
+                width: '32px', height: '32px', borderRadius: '50%', flexShrink: 0,
+                backgroundColor: 'var(--gold, #c49818)', color: '#fff',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                fontSize: '12px', fontWeight: 700, lineHeight: 1, cursor: 'default',
               }}
             >
               {usuario.nome.charAt(0).toUpperCase()}
             </div>
-            <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
-              <p style={{ color: 'var(--color-white)', fontSize: '14px', fontWeight: 700, margin: 0, lineHeight: '1.2', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                {usuario.nome}
-              </p>
-              <p style={{ color: 'var(--color-white)', fontSize: '12px', fontWeight: 300, margin: 0, lineHeight: '1.2' }}>
-                {usuario.papel === 'adm' ? 'Administrador' : 'Editor'}
-              </p>
-            </div>
+            {!recolhido && (
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <p style={{ color: 'var(--color-white)', fontSize: '14px', fontWeight: 700, margin: 0, lineHeight: '1.2', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  {usuario.nome}
+                </p>
+                <p style={{ color: 'rgba(255,255,255,0.45)', fontSize: '12px', fontWeight: 300, margin: 0, lineHeight: '1.2' }}>
+                  {usuario.papel === 'adm' ? 'Administrador' : 'Editor'}
+                </p>
+              </div>
+            )}
           </div>
           <button
             onClick={handleLogout}
-            className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-bold transition-colors hover:brightness-110"
-            style={{ backgroundColor: 'rgba(248,113,113,0.1)', color: '#F87171' }}
+            title={recolhido ? 'Sair' : undefined}
+            className="flex items-center font-bold transition-colors hover:brightness-110"
+            style={{
+              gap: recolhido ? '0' : '8px',
+              justifyContent: recolhido ? 'center' : 'flex-start',
+              padding: recolhido ? '6px' : '6px 10px',
+              borderRadius: '8px',
+              backgroundColor: 'rgba(248,113,113,0.1)', color: '#F87171',
+              border: 'none', cursor: 'pointer', fontSize: '13px', width: '100%',
+            }}
           >
             <LogoutIcon size={16} color="#F87171" />
-            Sair
+            {!recolhido && 'Sair'}
           </button>
         </div>
       </aside>

@@ -61,8 +61,8 @@ export default function LoginPage() {
       <div className="w-full max-w-sm">
         {/* Card do formulário */}
         <div
-          className="rounded-2xl p-8"
-          style={{ backgroundColor: 'var(--paper, #f4f1e6)' }}
+          className="p-8"
+          style={{ backgroundColor: 'var(--paper, #f4f1e6)', borderTop: '3px solid var(--gold, #c49818)' }}
         >
         {/* Logo / Nome */}
         <div className="text-center mb-8">
@@ -76,8 +76,12 @@ export default function LoginPage() {
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src="/svg/white-02.svg" alt="Logo" style={{ width: '64px', height: '64px', objectFit: 'contain' }} />
           </div>
-          <h1 className="text-2xl font-extrabold" style={{ color: 'var(--ink, #1b3a2f)', fontFamily: "'IM Fell English', serif" }}>
-            Painel Administrativo
+          <p style={{ fontSize: '11px', fontWeight: 600, letterSpacing: '0.18em', textTransform: 'uppercase', color: 'var(--sepia, #7a9e88)', marginBottom: '4px', fontFamily: "'DM Sans', sans-serif" }}>
+            Área Administrativa
+          </p>
+          <h1 style={{ fontSize: '28px', fontWeight: 800, lineHeight: 1.1, fontFamily: "'Playfair Display', serif", margin: 0 }}>
+            <span style={{ color: 'var(--ink, #1b3a2f)' }}>do </span>
+            <span style={{ color: 'var(--gold, #c49818)', fontStyle: 'italic' }}>Professor</span>
           </h1>
         </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px', margin: '0 0 20px' }}>
@@ -147,29 +151,40 @@ export default function LoginPage() {
             <button
               type="submit"
               disabled={carregando || bloqueado}
-              className="w-full rounded-lg py-2.5 text-sm font-bold transition-opacity mt-2"
+              className="w-full py-2.5 text-sm font-bold mt-2"
               style={{
-                backgroundColor: 'var(--color-blue)',
-                color: 'var(--color-white)',
+                backgroundColor: 'var(--ink, #1b3a2f)',
+                color: 'var(--gold, #c49818)',
+                border: '1px solid var(--gold, #c49818)',
                 opacity: carregando || bloqueado ? 0.5 : 1,
                 cursor: carregando || bloqueado ? 'not-allowed' : 'pointer',
+                transition: 'background-color 0.2s, color 0.2s',
+              }}
+              onMouseEnter={(e) => {
+                if (carregando || bloqueado) return
+                e.currentTarget.style.backgroundColor = 'var(--gold, #c49818)'
+                e.currentTarget.style.color = 'var(--ink, #1b3a2f)'
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.backgroundColor = 'var(--ink, #1b3a2f)'
+                e.currentTarget.style.color = 'var(--gold, #c49818)'
               }}
             >
               {carregando ? 'Entrando...' : bloqueado ? `Aguarde ${formatarContagem(segundosRestantes)}` : 'Entrar'}
             </button>
           </form>
-        </div>
 
-        {/* Link de volta ao site */}
-        <p className="text-center mt-6 text-sm font-light" style={{ color: 'var(--color-gray-dark)' }}>
-          <a
-            href="/"
-            className="hover:underline transition-colors"
-            style={{ color: 'var(--color-blue)' }}
-          >
-            ← Voltar ao site
-          </a>
-        </p>
+          {/* Link de volta ao site */}
+          <p className="text-center mt-6 text-sm font-light">
+            <a
+              href="/"
+              className="hover:underline transition-colors"
+              style={{ color: 'var(--sepia, #7a9e88)' }}
+            >
+              ← Voltar ao site
+            </a>
+          </p>
+        </div>
       </div>
     </div>
   )

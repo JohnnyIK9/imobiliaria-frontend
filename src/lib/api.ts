@@ -173,3 +173,64 @@ export async function desativarUsuarioApi(id: number) {
   })
   return res
 }
+
+// ── Imóveis ────────────────────────────────────────────────
+export async function getImoveisAdminApi(params?: { cidadeId?: number; regiaoId?: number }) {
+  const query = new URLSearchParams()
+  if (params?.cidadeId) query.set('cidade_id', params.cidadeId.toString())
+  if (params?.regiaoId) query.set('regiao_id', params.regiaoId.toString())
+  const url = `${API_URL}/api/admin/imoveis${query.toString() ? '?' + query.toString() : ''}`
+  return fetch(url, { credentials: 'include' })
+}
+
+export async function criarImovelApi(dados: {
+  status: string; publicarEm?: string | null; cidadeId: number; regiaoId?: number | null
+  tipo: string; preco: number; quartos: number; banheiros: number
+  areaM2: number; vagas: number; endereco: string; descricao?: string | null
+}) {
+  return fetch(`${API_URL}/api/admin/imoveis`, {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    credentials: 'include', body: JSON.stringify(dados),
+  })
+}
+
+export async function editarImovelApi(id: number, dados: {
+  status: string; publicarEm?: string | null; cidadeId: number; regiaoId?: number | null
+  tipo: string; preco: number; quartos: number; banheiros: number
+  areaM2: number; vagas: number; endereco: string; descricao?: string | null
+}) {
+  return fetch(`${API_URL}/api/admin/imoveis/${id}`, {
+    method: 'PUT', headers: { 'Content-Type': 'application/json' },
+    credentials: 'include', body: JSON.stringify(dados),
+  })
+}
+
+export async function excluirImovelApi(id: number) {
+  return fetch(`${API_URL}/api/admin/imoveis/${id}`, { method: 'DELETE', credentials: 'include' })
+}
+
+export async function getMidiasImovelApi(id: number) {
+  return fetch(`${API_URL}/api/imoveis/${id}/midias`, { credentials: 'include' })
+}
+
+export async function adicionarFotoApi(imovelId: number, dados: { dadosBase64: string; mimeType: string; nomeArquivo: string }) {
+  return fetch(`${API_URL}/api/admin/imoveis/${imovelId}/fotos`, {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    credentials: 'include', body: JSON.stringify(dados),
+  })
+}
+
+export async function excluirFotoApi(fotoId: number) {
+  return fetch(`${API_URL}/api/admin/fotos/${fotoId}`, { method: 'DELETE', credentials: 'include' })
+}
+
+export async function adicionarVideoApi(imovelId: number, dados: { urlYoutube: string }) {
+  return fetch(`${API_URL}/api/admin/imoveis/${imovelId}/videos`, {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    credentials: 'include', body: JSON.stringify(dados),
+  })
+}
+
+export async function excluirVideoApi(videoId: number) {
+  return fetch(`${API_URL}/api/admin/videos/${videoId}`, { method: 'DELETE', credentials: 'include' })
+}

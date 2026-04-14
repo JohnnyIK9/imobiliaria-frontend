@@ -105,14 +105,12 @@ function isYoutubeUrl(url: string) {
 function corStatus(status: string) {
   if (status === 'ativo') return '#4ADE80'
   if (status === 'pausado') return '#FACC15'
-  if (status === 'agendado') return '#FB923C'
   return 'rgba(0,0,0,0.2)'
 }
 
 function labelStatus(status: string) {
   if (status === 'ativo') return 'Ativo'
   if (status === 'pausado') return 'Pausado'
-  if (status === 'agendado') return 'Agendado'
   return 'Inativo'
 }
 
@@ -379,7 +377,7 @@ export default function ImoveisPage() {
     try {
       const payload = {
         status: form.status,
-        publicarEm: form.status === 'agendado' && form.publicarEm ? form.publicarEm : null,
+        publicarEm: form.publicarEm ? form.publicarEm : null,
         cidadeId: Number(form.cidadeId),
         regiaoId: form.regiaoId ? Number(form.regiaoId) : null,
         tipo: form.tipo,
@@ -1087,33 +1085,38 @@ export default function ImoveisPage() {
 
                 {/* Campos */}
                 <div style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: '14px', flex: 1 }}>
-                  {/* Grid 2 col: Status + Publicar em */}
-                  <div style={{ display: 'grid', gridTemplateColumns: form.status === 'agendado' ? '1fr 1fr' : '1fr', gap: '14px' }}>
+                  {/* Status + Publicar em */}
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px' }}>
                     <CampoForm label="Status">
                       <select
                         value={form.status}
-                        onChange={(e) => setForm((f) => ({ ...f, status: e.target.value, publicarEm: '' }))}
+                        onChange={(e) => setForm((f) => ({ ...f, status: e.target.value }))}
                         style={estiloSelectForm}
                       >
                         <option value="ativo" style={estiloOption}>Ativo</option>
                         <option value="pausado" style={estiloOption}>Pausado</option>
                         <option value="inativo" style={estiloOption}>Inativo</option>
-                        <option value="agendado" style={estiloOption}>Agendado</option>
                       </select>
                     </CampoForm>
-                    {form.status === 'agendado' && (
-                      <CampoForm label="Publicar a partir de">
-                        <input
-                          type="datetime-local"
-                          value={form.publicarEm}
-                          onChange={(e) => setForm((f) => ({ ...f, publicarEm: e.target.value }))}
-                          style={estiloInputForm}
-                          onFocus={(e) => { e.currentTarget.style.borderColor = 'var(--gold, #c49818)' }}
-                          onBlur={(e) => { e.currentTarget.style.borderColor = 'var(--paper-3, #dddac8)' }}
-                        />
-                      </CampoForm>
-                    )}
+                    <CampoForm label="Publicar a partir de">
+                      <input
+                        type="datetime-local"
+                        value={form.publicarEm}
+                        onChange={(e) => setForm((f) => ({ ...f, publicarEm: e.target.value }))}
+                        style={estiloInputForm}
+                        onFocus={(e) => { e.currentTarget.style.borderColor = 'var(--gold, #c49818)' }}
+                        onBlur={(e) => { e.currentTarget.style.borderColor = 'var(--paper-3, #dddac8)' }}
+                      />
+                    </CampoForm>
                   </div>
+                  {/* Dica sobre publicarEm */}
+                  {form.status === 'ativo' && (
+                    <p style={{ margin: '-8px 0 0', fontSize: '11px', color: 'var(--sepia, #7a9e88)', fontStyle: 'italic' }}>
+                      {form.publicarEm
+                        ? `Aparece no site a partir de ${new Date(form.publicarEm).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })}`
+                        : 'Sem data → aparece imediatamente no site'}
+                    </p>
+                  )}
 
                   {/* Cidade + Região */}
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px' }}>

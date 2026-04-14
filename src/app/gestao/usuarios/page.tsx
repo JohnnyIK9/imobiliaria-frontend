@@ -178,10 +178,11 @@ export default function UsuariosPage() {
   return (
     <div className="h-full overflow-y-auto" style={{ fontFamily: "'DM Sans', sans-serif" }}>
     <div className="p-6 md:p-8 max-w-5xl mx-auto">
+
       {/* Toast */}
       {toast && (
         <div
-          className="fixed top-6 right-6 z-50 flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-bold shadow-lg transition-all"
+          className="fixed top-6 right-6 z-50 flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-bold shadow-lg"
           style={{
             backgroundColor: toast.tipo === 'sucesso' ? '#14532d' : '#3B1F1F',
             color: toast.tipo === 'sucesso' ? '#4ADE80' : '#F87171',
@@ -193,44 +194,47 @@ export default function UsuariosPage() {
       )}
 
       {/* Cabeçalho */}
-      <div className="flex items-center justify-between mb-8">
+      <div className="flex items-center justify-between mb-6 pb-6" style={{ borderBottom: '1px solid var(--gold, #c49818)' }}>
         <div>
-          <h1 className="text-2xl font-extrabold" style={{ color: 'var(--color-white)' }}>
+          <h1 className="font-extrabold" style={{ fontSize: '36px', color: 'var(--ink, #1b3a2f)', fontFamily: "'Playfair Display', serif" }}>
             Usuários
           </h1>
-          <p className="mt-1 text-sm font-light" style={{ color: 'var(--color-gray-dark)' }}>
+          <p className="font-bold mt-2" style={{ fontSize: '18px', color: 'var(--ink, #1b3a2f)', fontFamily: "'Playfair Display', serif" }}>
             Gerencie os acessos ao painel
           </p>
         </div>
         <button
           onClick={abrirNovo}
-          className="flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-bold transition-opacity hover:opacity-90"
-          style={{ backgroundColor: 'var(--gold, #c49818)', color: '#fff' }}
+          className="flex items-center gap-2 px-4 py-2.5 text-sm font-bold transition-all hover:brightness-110"
+          style={{ backgroundColor: 'var(--ink, #1b3a2f)', color: 'var(--gold, #c49818)', border: '1px solid var(--gold, #c49818)', borderRadius: '8px' }}
         >
           <span className="text-base leading-none">+</span> Novo usuário
         </button>
       </div>
 
       {/* Tabela — Desktop */}
-      <div className="hidden md:block rounded-xl overflow-hidden" style={{ backgroundColor: 'var(--paper, #f4f1e6)' }}>
+      <div
+        className="hidden md:block overflow-hidden"
+        style={{ border: '1px solid var(--gold, #c49818)', borderRadius: '12px' }}
+      >
         <table className="w-full text-sm">
           <thead>
-            <tr style={{ borderBottom: '1px solid rgba(27,58,47,0.12)' }}>
+            <tr style={{ borderBottom: '1px solid var(--gold, #c49818)', backgroundColor: 'var(--paper-2, #eae6d4)' }}>
               {['Nome', 'E-mail', 'Papel', 'Status', 'Último acesso', ''].map((h) => (
                 <th
                   key={h}
                   className="text-left px-5 py-3.5 font-bold text-xs uppercase tracking-wide"
-                  style={{ color: 'var(--sepia, #7a9e88)' }}
+                  style={{ color: 'var(--ink, #1b3a2f)', fontFamily: "'Playfair Display', serif" }}
                 >
                   {h}
                 </th>
               ))}
             </tr>
           </thead>
-          <tbody>
+          <tbody style={{ backgroundColor: 'var(--paper, #f4f1e6)' }}>
             {carregando ? (
               Array.from({ length: 3 }).map((_, i) => (
-                <tr key={i} style={{ borderBottom: '1px solid rgba(27,58,47,0.08)' }}>
+                <tr key={i} style={{ borderBottom: '1px solid var(--paper-3, #dddac8)' }}>
                   {Array.from({ length: 5 }).map((_, j) => (
                     <td key={j} className="px-5 py-4">
                       <div className="h-4 rounded animate-pulse" style={{ backgroundColor: 'var(--paper-3, #dddac8)', width: j === 0 ? '120px' : j === 1 ? '180px' : '80px' }} />
@@ -241,29 +245,29 @@ export default function UsuariosPage() {
               ))
             ) : usuarios.length === 0 ? (
               <tr>
-                <td colSpan={6} className="px-5 py-10 text-center text-sm font-light" style={{ color: 'var(--sepia, #7a9e88)' }}>
+                <td colSpan={6} className="px-5 py-10 text-center text-sm font-bold" style={{ color: 'var(--ink, #1b3a2f)' }}>
                   Nenhum usuário encontrado.
                 </td>
               </tr>
             ) : (
               usuarios.map((u) => (
-                <tr key={u.id} style={{ borderBottom: '1px solid rgba(27,58,47,0.08)' }}>
-                  <td className="px-5 py-4 font-bold" style={{ color: 'var(--ink, #1b3a2f)' }}>{u.nome}</td>
-                  <td className="px-5 py-4 font-light" style={{ color: 'rgba(27,58,47,0.7)' }}>{u.email}</td>
+                <tr key={u.id} style={{ borderBottom: '1px solid var(--paper-3, #dddac8)' }}>
+                  <td className="px-5 py-4 font-bold" style={{ color: 'var(--ink, #1b3a2f)', fontFamily: "'Playfair Display', serif" }}>{u.nome}</td>
+                  <td className="px-5 py-4 font-bold" style={{ color: 'var(--ink, #1b3a2f)' }}>{u.email}</td>
                   <td className="px-5 py-4">
                     <PapelBadge papel={u.papel} />
                   </td>
                   <td className="px-5 py-4">
                     <StatusBadge ativo={u.ativo} />
                   </td>
-                  <td className="px-5 py-4 font-light text-xs" style={{ color: 'var(--sepia, #7a9e88)' }}>
+                  <td className="px-5 py-4 font-bold text-xs" style={{ color: 'var(--ink, #1b3a2f)' }}>
                     {formatarData(u.ultimoAcesso)}
                   </td>
                   <td className="px-5 py-4">
                     <div className="flex items-center gap-2 justify-end">
                       <button
                         onClick={() => abrirEditar(u)}
-                        className="px-3 py-1.5 rounded-lg text-xs font-bold transition-colors hover:brightness-110"
+                        className="px-3 py-1.5 rounded-lg text-xs font-bold transition-colors hover:brightness-95"
                         style={{ backgroundColor: 'var(--paper-3, #dddac8)', color: 'var(--ink, #1b3a2f)' }}
                       >
                         Editar
@@ -298,43 +302,42 @@ export default function UsuariosPage() {
       <div className="md:hidden space-y-3" ref={menuRef}>
         {carregando ? (
           Array.from({ length: 3 }).map((_, i) => (
-            <div key={i} className="rounded-xl p-4 animate-pulse" style={{ backgroundColor: 'var(--paper, #f4f1e6)' }}>
+            <div key={i} className="rounded-xl p-4 animate-pulse" style={{ backgroundColor: 'var(--paper, #f4f1e6)', border: '1px solid var(--gold, #c49818)' }}>
               <div className="h-4 w-32 rounded mb-2" style={{ backgroundColor: 'var(--paper-3, #dddac8)' }} />
               <div className="h-3 w-48 rounded" style={{ backgroundColor: 'var(--paper-3, #dddac8)' }} />
             </div>
           ))
         ) : usuarios.length === 0 ? (
-          <p className="text-center py-10 text-sm font-light" style={{ color: 'var(--sepia, #7a9e88)' }}>
+          <p className="text-center py-10 text-sm font-bold" style={{ color: 'var(--ink, #1b3a2f)' }}>
             Nenhum usuário encontrado.
           </p>
         ) : (
           usuarios.map((u) => (
-            <div key={u.id} className="rounded-xl p-4 relative" style={{ backgroundColor: 'var(--paper, #f4f1e6)' }}>
+            <div key={u.id} className="rounded-xl p-4 relative" style={{ backgroundColor: 'var(--paper, #f4f1e6)', border: '1px solid var(--gold, #c49818)' }}>
               <div className="flex items-start justify-between">
                 <div className="flex-1 min-w-0">
-                  <p className="font-bold text-sm truncate" style={{ color: 'var(--ink, #1b3a2f)' }}>{u.nome}</p>
-                  <p className="text-xs font-light truncate mt-0.5" style={{ color: 'rgba(27,58,47,0.6)' }}>{u.email}</p>
+                  <p className="font-bold text-sm truncate" style={{ color: 'var(--ink, #1b3a2f)', fontFamily: "'Playfair Display', serif" }}>{u.nome}</p>
+                  <p className="text-xs font-bold truncate mt-0.5" style={{ color: 'var(--ink, #1b3a2f)' }}>{u.email}</p>
                   <div className="flex items-center gap-2 mt-2">
                     <PapelBadge papel={u.papel} />
                     <StatusBadge ativo={u.ativo} />
                   </div>
-                  <p className="text-xs font-light mt-2" style={{ color: 'var(--sepia, #7a9e88)' }}>
+                  <p className="text-xs font-bold mt-2" style={{ color: 'var(--ink, #1b3a2f)' }}>
                     Último acesso: {formatarData(u.ultimoAcesso)}
                   </p>
                 </div>
-                {/* Menu ⋮ */}
                 <div className="relative ml-3">
                   <button
                     onClick={() => setMenuAberto(menuAberto === u.id ? null : u.id)}
                     className="w-8 h-8 flex items-center justify-center rounded-lg text-lg font-bold leading-none"
-                    style={{ color: 'var(--sepia, #7a9e88)', backgroundColor: 'var(--paper-3, #dddac8)' }}
+                    style={{ color: 'var(--ink, #1b3a2f)', backgroundColor: 'var(--paper-3, #dddac8)' }}
                   >
                     ⋮
                   </button>
                   {menuAberto === u.id && (
                     <div
                       className="absolute right-0 top-10 z-20 rounded-xl shadow-xl overflow-hidden min-w-[130px]"
-                      style={{ backgroundColor: 'var(--paper-2, #eae6d4)', border: '1px solid var(--paper-3, #dddac8)' }}
+                      style={{ backgroundColor: 'var(--paper-2, #eae6d4)', border: '1px solid var(--gold, #c49818)' }}
                     >
                       <button
                         onClick={() => abrirEditar(u)}
@@ -347,7 +350,7 @@ export default function UsuariosPage() {
                         <button
                           onClick={() => handleDesativar(u)}
                           className="w-full text-left px-4 py-3 text-sm font-bold hover:brightness-95 transition-colors"
-                          style={{ color: '#F87171', borderTop: '1px solid rgba(27,58,47,0.08)' }}
+                          style={{ color: '#F87171', borderTop: '1px solid var(--paper-3, #dddac8)' }}
                         >
                           Desativar
                         </button>
@@ -355,7 +358,7 @@ export default function UsuariosPage() {
                         <button
                           onClick={() => handleAtivar(u)}
                           className="w-full text-left px-4 py-3 text-sm font-bold hover:brightness-95 transition-colors"
-                          style={{ color: '#27ae60', borderTop: '1px solid rgba(27,58,47,0.08)' }}
+                          style={{ color: '#27ae60', borderTop: '1px solid var(--paper-3, #dddac8)' }}
                         >
                           Ativar
                         </button>
@@ -376,25 +379,31 @@ export default function UsuariosPage() {
           style={{ backgroundColor: 'rgba(0,0,0,0.7)' }}
         >
           <div
-            className="w-full max-w-md rounded-2xl p-6 shadow-2xl"
-            style={{ backgroundColor: 'var(--color-green-dark)' }}
+            className="w-full max-w-md p-6 shadow-2xl"
+            style={{ backgroundColor: 'var(--paper, #f4f1e6)', border: '1px solid var(--gold, #c49818)', borderTop: '3px solid var(--gold, #c49818)', borderRadius: '12px' }}
           >
             {/* Header modal */}
-            <div className="flex items-center justify-between mb-6">
-              <h2 className="text-lg font-extrabold" style={{ color: 'var(--color-white)' }}>
+            <div className="flex items-center justify-between mb-2">
+              <h2 className="font-extrabold" style={{ fontSize: '22px', color: 'var(--ink, #1b3a2f)', fontFamily: "'Playfair Display', serif" }}>
                 {editando ? 'Editar usuário' : 'Novo usuário'}
               </h2>
               <button
                 onClick={fecharModal}
-                className="w-8 h-8 flex items-center justify-center rounded-lg text-lg leading-none transition-colors hover:brightness-125"
-                style={{ backgroundColor: 'var(--color-green-mid)', color: 'var(--color-gray-dark)' }}
+                className="w-8 h-8 flex items-center justify-center rounded-lg text-sm font-bold transition-colors hover:brightness-95"
+                style={{ backgroundColor: 'var(--paper-3, #dddac8)', color: 'var(--ink, #1b3a2f)' }}
               >
                 ✕
               </button>
             </div>
 
+            {/* Divisor ornamental */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', margin: '12px 0 20px' }}>
+              <div style={{ flex: 1, height: '1px', backgroundColor: 'var(--paper-3, #dddac8)' }} />
+              <span style={{ color: 'var(--gold, #c49818)', fontSize: '10px' }}>◆</span>
+              <div style={{ flex: 1, height: '1px', backgroundColor: 'var(--paper-3, #dddac8)' }} />
+            </div>
+
             <form onSubmit={handleSalvar} className="space-y-4">
-              {/* Nome */}
               <CampoTexto
                 label="Nome"
                 value={form.nome}
@@ -403,7 +412,6 @@ export default function UsuariosPage() {
                 placeholder="Nome completo"
               />
 
-              {/* E-mail */}
               <CampoTexto
                 label="E-mail"
                 type="email"
@@ -413,15 +421,14 @@ export default function UsuariosPage() {
                 placeholder="email@exemplo.com"
               />
 
-              {/* Senha */}
               {editando ? (
                 <div>
                   <label className="flex items-center gap-2 cursor-pointer w-fit">
                     <div
                       className="w-4 h-4 rounded flex items-center justify-center flex-shrink-0 transition-colors"
                       style={{
-                        backgroundColor: alterarSenha ? 'var(--gold, #c49818)' : 'var(--color-green-mid)',
-                        border: `1.5px solid ${alterarSenha ? 'var(--gold, #c49818)' : 'rgba(255,255,255,0.2)'}`,
+                        backgroundColor: alterarSenha ? 'var(--gold, #c49818)' : 'var(--paper-3, #dddac8)',
+                        border: `1.5px solid ${alterarSenha ? 'var(--gold, #c49818)' : 'var(--paper-3, #dddac8)'}`,
                       }}
                     >
                       {alterarSenha && (
@@ -439,7 +446,7 @@ export default function UsuariosPage() {
                       }}
                       className="sr-only"
                     />
-                    <span className="text-sm font-bold" style={{ color: 'var(--color-white)' }}>
+                    <span className="text-sm font-bold" style={{ color: 'var(--ink, #1b3a2f)' }}>
                       Alterar senha
                     </span>
                   </label>
@@ -467,17 +474,16 @@ export default function UsuariosPage() {
                 />
               )}
 
-              {/* Papel + Ativo */}
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-sm font-bold mb-1.5" style={{ color: 'var(--color-white)' }}>
+                  <label className="block text-sm font-bold mb-1.5" style={{ color: 'var(--ink, #1b3a2f)' }}>
                     Papel
                   </label>
                   <select
                     value={form.papel}
                     onChange={(e) => setForm({ ...form, papel: e.target.value as 'adm' | 'editor' })}
-                    className="w-full rounded-lg px-3 py-2.5 text-sm outline-none"
-                    style={{ backgroundColor: 'var(--color-green-mid)', color: 'var(--color-white)', border: '1px solid transparent' }}
+                    className="w-full rounded-lg px-3 py-2.5 text-sm outline-none font-bold"
+                    style={{ backgroundColor: 'var(--paper-2, #eae6d4)', color: 'var(--ink, #1b3a2f)', border: '1px solid var(--paper-3, #dddac8)' }}
                   >
                     <option value="editor">Editor</option>
                     <option value="adm">Administrador</option>
@@ -485,54 +491,55 @@ export default function UsuariosPage() {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-bold mb-1.5" style={{ color: 'var(--color-white)' }}>
+                  <label className="block text-sm font-bold mb-1.5" style={{ color: 'var(--ink, #1b3a2f)' }}>
                     Status
                   </label>
                   <button
                     type="button"
                     onClick={() => setForm({ ...form, ativo: !form.ativo })}
                     className="w-full flex items-center justify-between rounded-lg px-3 py-2.5 text-sm font-bold transition-colors"
-                    style={{ backgroundColor: 'var(--color-green-mid)', color: form.ativo ? '#4ADE80' : '#F87171' }}
+                    style={{ backgroundColor: 'var(--paper-2, #eae6d4)', color: form.ativo ? '#16a34a' : '#dc2626', border: '1px solid var(--paper-3, #dddac8)' }}
                   >
                     <span>{form.ativo ? 'Ativo' : 'Inativo'}</span>
                     <div
                       className="w-9 h-5 rounded-full relative transition-colors"
-                      style={{ backgroundColor: form.ativo ? 'rgba(74,222,128,0.3)' : 'rgba(248,113,113,0.2)' }}
+                      style={{ backgroundColor: form.ativo ? 'rgba(22,163,74,0.2)' : 'rgba(220,38,38,0.15)' }}
                     >
                       <div
                         className="absolute top-0.5 w-4 h-4 rounded-full transition-all"
-                        style={{
-                          backgroundColor: form.ativo ? '#4ADE80' : '#F87171',
-                          left: form.ativo ? '18px' : '2px',
-                        }}
+                        style={{ backgroundColor: form.ativo ? '#16a34a' : '#dc2626', left: form.ativo ? '18px' : '2px' }}
                       />
                     </div>
                   </button>
                 </div>
               </div>
 
-              {/* Erro */}
               {erro && (
-                <div className="rounded-lg px-4 py-3 text-sm font-light" style={{ backgroundColor: '#3B1F1F', color: '#F87171' }}>
+                <div className="rounded-lg px-4 py-3 text-sm font-bold" style={{ backgroundColor: '#3B1F1F', color: '#F87171' }}>
                   {erro}
                 </div>
               )}
 
-              {/* Botões */}
               <div className="flex gap-3 pt-2">
                 <button
                   type="button"
                   onClick={fecharModal}
-                  className="flex-1 py-2.5 rounded-lg text-sm font-bold transition-colors hover:brightness-110"
-                  style={{ backgroundColor: 'var(--color-green-mid)', color: 'var(--color-white)' }}
+                  className="flex-1 py-2.5 rounded-lg text-sm font-bold transition-colors hover:brightness-95"
+                  style={{ backgroundColor: 'var(--paper-3, #dddac8)', color: 'var(--ink, #1b3a2f)' }}
                 >
                   Cancelar
                 </button>
                 <button
                   type="submit"
                   disabled={salvando}
-                  className="flex-1 py-2.5 rounded-lg text-sm font-bold transition-opacity"
-                  style={{ backgroundColor: 'var(--gold, #c49818)', color: '#fff', opacity: salvando ? 0.6 : 1 }}
+                  className="flex-1 py-2.5 text-sm font-bold transition-all"
+                  style={{
+                    backgroundColor: 'var(--ink, #1b3a2f)',
+                    color: 'var(--gold, #c49818)',
+                    border: '1px solid var(--gold, #c49818)',
+                    borderRadius: '8px',
+                    opacity: salvando ? 0.6 : 1,
+                  }}
                 >
                   {salvando ? 'Salvando...' : 'Salvar'}
                 </button>
@@ -545,8 +552,6 @@ export default function UsuariosPage() {
     </div>
   )
 }
-
-/* Componentes auxiliares */
 
 function CampoTexto({
   label,
@@ -565,7 +570,7 @@ function CampoTexto({
 }) {
   return (
     <div>
-      <label className="block text-sm font-bold mb-1.5" style={{ color: 'var(--color-white)' }}>
+      <label className="block text-sm font-bold mb-1.5" style={{ color: 'var(--ink, #1b3a2f)' }}>
         {label}
       </label>
       <input
@@ -574,10 +579,10 @@ function CampoTexto({
         onChange={(e) => onChange(e.target.value)}
         required={required}
         placeholder={placeholder}
-        className="w-full rounded-lg px-4 py-2.5 text-sm outline-none transition-all placeholder:font-light"
-        style={{ backgroundColor: 'var(--color-green-mid)', color: 'var(--color-white)', border: '1px solid transparent' }}
+        className="w-full rounded-lg px-4 py-2.5 text-sm font-bold outline-none transition-all placeholder:font-light"
+        style={{ backgroundColor: 'var(--paper-2, #eae6d4)', color: 'var(--ink, #1b3a2f)', border: '1px solid var(--paper-3, #dddac8)' }}
         onFocus={(e) => (e.currentTarget.style.borderColor = 'var(--gold, #c49818)')}
-        onBlur={(e) => (e.currentTarget.style.borderColor = 'transparent')}
+        onBlur={(e) => (e.currentTarget.style.borderColor = 'var(--paper-3, #dddac8)')}
       />
     </div>
   )
@@ -588,8 +593,8 @@ function PapelBadge({ papel }: { papel: 'adm' | 'editor' }) {
     <span
       className="inline-block px-2 py-0.5 rounded text-xs font-bold"
       style={{
-        backgroundColor: papel === 'adm' ? 'rgba(196,152,24,0.15)' : 'rgba(27,58,47,0.08)',
-        color: papel === 'adm' ? 'var(--gold, #c49818)' : 'var(--sepia, #7a9e88)',
+        backgroundColor: papel === 'adm' ? 'rgba(196,152,24,0.15)' : 'var(--paper-3, #dddac8)',
+        color: papel === 'adm' ? 'var(--gold, #c49818)' : 'var(--ink, #1b3a2f)',
       }}
     >
       {papel === 'adm' ? 'Administrador' : 'Editor'}
@@ -602,9 +607,9 @@ function StatusBadge({ ativo }: { ativo: boolean }) {
     <span className="inline-flex items-center gap-1.5 text-xs font-bold">
       <span
         className="w-2 h-2 rounded-full inline-block"
-        style={{ backgroundColor: ativo ? '#4ADE80' : '#6B7280' }}
+        style={{ backgroundColor: ativo ? '#16a34a' : '#6B7280' }}
       />
-      <span style={{ color: ativo ? '#4ADE80' : '#6B7280' }}>{ativo ? 'Ativo' : 'Inativo'}</span>
+      <span style={{ color: ativo ? '#16a34a' : '#6B7280' }}>{ativo ? 'Ativo' : 'Inativo'}</span>
     </span>
   )
 }

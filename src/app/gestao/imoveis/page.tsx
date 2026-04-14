@@ -621,8 +621,8 @@ export default function ImoveisPage() {
           width: '240px',
           flexShrink: 0,
           height: '100%',
-          backgroundColor: 'var(--color-green-dark)',
-          borderRight: '1px solid rgba(255,255,255,0.08)',
+          backgroundColor: 'var(--paper, #f4f1e6)',
+          borderRight: '1px solid var(--gold, #c49818)',
           display: 'flex',
           flexDirection: 'column',
           overflow: 'hidden',
@@ -632,18 +632,18 @@ export default function ImoveisPage() {
         <div
           style={{
             padding: '12px 14px',
-            borderBottom: '1px solid rgba(255,255,255,0.08)',
+            borderBottom: '1px solid var(--paper-3, #dddac8)',
             flexShrink: 0,
           }}
         >
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '10px' }}>
-            <span style={{ color: 'var(--color-white)', fontSize: '14px', fontWeight: 800 }}>Imóveis</span>
+            <span style={{ color: 'var(--ink, #1b3a2f)', fontSize: '14px', fontWeight: 800 }}>Imóveis</span>
             <button
               onClick={novoImovel}
               style={{
-                backgroundColor: 'var(--gold, #c49818)',
-                color: '#fff',
-                border: 'none',
+                backgroundColor: 'var(--ink, #1b3a2f)',
+                color: 'var(--gold, #c49818)',
+                border: '1px solid var(--gold, #c49818)',
                 borderRadius: '7px',
                 padding: '5px 10px',
                 fontSize: '12px',
@@ -665,9 +665,9 @@ export default function ImoveisPage() {
             style={{
               width: '100%',
               boxSizing: 'border-box',
-              backgroundColor: 'var(--color-green-mid)',
-              color: 'var(--color-white)',
-              border: '1px solid rgba(255,255,255,0.08)',
+              backgroundColor: 'var(--paper-2, #eae6d4)',
+              color: 'var(--ink, #1b3a2f)',
+              border: '1px solid var(--paper-3, #dddac8)',
               borderRadius: '7px',
               padding: '7px 10px',
               fontSize: '12px',
@@ -684,7 +684,7 @@ export default function ImoveisPage() {
           >
             <option value="">Todas as cidades</option>
             {filtroCidades.map((c) => (
-              <option key={c.id} value={String(c.id)} style={{ color: '#fff', backgroundColor: '#374C4B' }}>
+              <option key={c.id} value={String(c.id)} style={estiloOption}>
                 {c.nome}
               </option>
             ))}
@@ -699,7 +699,7 @@ export default function ImoveisPage() {
           >
             <option value="">Todas as regiões</option>
             {filtroRegioes.map((r) => (
-              <option key={r.id} value={String(r.id)} style={{ color: '#fff', backgroundColor: '#374C4B' }}>
+              <option key={r.id} value={String(r.id)} style={estiloOption}>
                 {r.nome}
               </option>
             ))}
@@ -717,9 +717,9 @@ export default function ImoveisPage() {
               width: '100%',
               padding: '7px',
               borderRadius: '7px',
-              border: 'none',
-              backgroundColor: 'rgba(196,152,24,0.15)',
-              color: '#c49818',
+              border: '1px solid var(--gold, #c49818)',
+              backgroundColor: 'var(--ink, #1b3a2f)',
+              color: 'var(--gold, #c49818)',
               fontSize: '12px',
               fontWeight: 700,
               cursor: 'pointer',
@@ -736,7 +736,7 @@ export default function ImoveisPage() {
               <div style={estiloSpinner} />
             </div>
           ) : imoveisFiltrados.length === 0 ? (
-            <p style={{ color: 'rgba(255,255,255,0.3)', fontSize: '12px', textAlign: 'center', padding: '24px 12px', margin: 0 }}>
+            <p style={{ color: 'var(--sepia, #7a9e88)', fontSize: '12px', textAlign: 'center', padding: '24px 12px', margin: 0 }}>
               Nenhum imóvel encontrado.
             </p>
           ) : (
@@ -759,11 +759,11 @@ export default function ImoveisPage() {
                       width: '7px', height: '7px', borderRadius: '50%', flexShrink: 0,
                       backgroundColor: corStatus(im.status),
                     }} />
-                    <span style={{ color: 'var(--color-white)', fontSize: '13px', fontWeight: 800 }}>
+                    <span style={{ color: 'var(--ink, #1b3a2f)', fontSize: '13px', fontWeight: 800 }}>
                       {im.codigo}
                     </span>
                   </div>
-                  <p style={{ color: 'rgba(255,255,255,0.55)', fontSize: '11px', margin: '0 0 2px 14px' }}>
+                  <p style={{ color: 'var(--sepia, #7a9e88)', fontSize: '11px', margin: '0 0 2px 14px' }}>
                     {im.tipo}{im.regiaoNome ? ` · ${im.regiaoNome}` : ''}
                   </p>
                   <p style={{ color: '#c49818', fontSize: '12px', fontWeight: 700, margin: '0 0 0 14px' }}>
@@ -784,19 +784,19 @@ export default function ImoveisPage() {
           overflow: 'hidden',
           display: 'flex',
           flexDirection: 'column',
-          backgroundColor: 'var(--color-black)',
-          borderRight: '1px solid rgba(255,255,255,0.08)',
+          backgroundColor: 'var(--paper-2, #eae6d4)',
+          borderRight: '1px solid var(--gold, #c49818)',
         }}
       >
         {!imovelSel && !modoNovo ? (
           <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <p style={{ color: 'rgba(255,255,255,0.25)', fontSize: '14px', fontWeight: 300 }}>
+            <p style={{ color: 'var(--sepia, #7a9e88)', fontSize: '14px', fontWeight: 300 }}>
               Selecione um imóvel
             </p>
           </div>
         ) : modoNovo ? (
           <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <p style={{ color: 'rgba(255,255,255,0.25)', fontSize: '13px', textAlign: 'center', padding: '20px' }}>
+            <p style={{ color: 'var(--sepia, #7a9e88)', fontSize: '13px', textAlign: 'center', padding: '20px' }}>
               Salve o imóvel primeiro para adicionar mídias
             </p>
           </div>
@@ -836,7 +836,7 @@ export default function ImoveisPage() {
                         }}
                       >
                         {total === 0 ? (
-                          <p style={{ color: 'rgba(255,255,255,0.2)', fontSize: '13px', margin: 0 }}>Nenhuma mídia</p>
+                          <p style={{ color: 'rgba(0,0,0,0.3)', fontSize: '13px', margin: 0 }}>Nenhuma mídia</p>
                         ) : atual.tipo === 'foto' ? (
                           <img
                             src={`data:${atual.mimeType};base64,${atual.dadosBase64}`}
@@ -959,8 +959,8 @@ export default function ImoveisPage() {
                     disabled={adicionandoFoto}
                     style={{
                       width: '100%', padding: '8px', borderRadius: '8px',
-                      border: '1px dashed rgba(255,255,255,0.2)', backgroundColor: 'transparent',
-                      color: adicionandoFoto ? 'rgba(255,255,255,0.3)' : 'rgba(255,255,255,0.5)',
+                      border: '1px dashed var(--paper-3, #dddac8)', backgroundColor: 'transparent',
+                      color: adicionandoFoto ? 'var(--sepia, #7a9e88)' : 'var(--ink, #1b3a2f)',
                       fontSize: '12px', fontWeight: 700,
                       cursor: adicionandoFoto ? 'not-allowed' : 'pointer',
                     }}
@@ -979,9 +979,9 @@ export default function ImoveisPage() {
                       onChange={(e) => { setUrlVideo(e.target.value); setErroVideo('') }}
                       style={{
                         flex: 1,
-                        backgroundColor: 'var(--color-green-dark)',
-                        color: 'var(--color-white)',
-                        border: `1px solid ${erroVideo ? '#F87171' : 'rgba(255,255,255,0.1)'}`,
+                        backgroundColor: 'var(--paper, #f4f1e6)',
+                        color: 'var(--ink, #1b3a2f)',
+                        border: `1px solid ${erroVideo ? '#F87171' : 'var(--paper-3, #dddac8)'}`,
                         borderRadius: '7px', padding: '8px 10px', fontSize: '12px', outline: 'none',
                       }}
                     />
@@ -1015,7 +1015,7 @@ export default function ImoveisPage() {
           width: '310px',
           flexShrink: 0,
           height: '100%',
-          backgroundColor: 'var(--color-green-dark)',
+          backgroundColor: 'var(--paper, #f4f1e6)',
           display: 'flex',
           flexDirection: 'column',
           overflow: 'hidden',
@@ -1025,14 +1025,14 @@ export default function ImoveisPage() {
         <div
           style={{
             padding: '12px 16px',
-            borderBottom: '1px solid rgba(255,255,255,0.08)',
+            borderBottom: '1px solid var(--paper-3, #dddac8)',
             flexShrink: 0,
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',
           }}
         >
-          <span style={{ color: 'var(--color-white)', fontSize: '13px', fontWeight: 800 }}>
+          <span style={{ color: 'var(--ink, #1b3a2f)', fontSize: '13px', fontWeight: 800 }}>
             {modoNovo ? 'Novo imóvel' : imovelSel ? `#${imovelSel.codigo}` : '---'}
           </span>
           {!modoNovo && imovelSel && (
@@ -1139,7 +1139,7 @@ export default function ImoveisPage() {
                   placeholder="Ex: 480000"
                   style={estiloInputForm}
                   onFocus={(e) => { e.currentTarget.style.borderColor = 'var(--gold, #c49818)' }}
-                  onBlur={(e) => { e.currentTarget.style.borderColor = 'rgba(255,255,255,0.1)' }}
+                  onBlur={(e) => { e.currentTarget.style.borderColor = 'var(--paper-3, #dddac8)' }}
                 />
               </CampoForm>
 
@@ -1154,7 +1154,7 @@ export default function ImoveisPage() {
                     onChange={(e) => setForm((f) => ({ ...f, quartos: e.target.value }))}
                     style={estiloInputForm}
                     onFocus={(e) => { e.currentTarget.style.borderColor = 'var(--gold, #c49818)' }}
-                    onBlur={(e) => { e.currentTarget.style.borderColor = 'rgba(255,255,255,0.1)' }}
+                    onBlur={(e) => { e.currentTarget.style.borderColor = 'var(--paper-3, #dddac8)' }}
                   />
                 </CampoForm>
                 <CampoForm label="Banheiros">
@@ -1166,7 +1166,7 @@ export default function ImoveisPage() {
                     onChange={(e) => setForm((f) => ({ ...f, banheiros: e.target.value }))}
                     style={estiloInputForm}
                     onFocus={(e) => { e.currentTarget.style.borderColor = 'var(--gold, #c49818)' }}
-                    onBlur={(e) => { e.currentTarget.style.borderColor = 'rgba(255,255,255,0.1)' }}
+                    onBlur={(e) => { e.currentTarget.style.borderColor = 'var(--paper-3, #dddac8)' }}
                   />
                 </CampoForm>
               </div>
@@ -1183,7 +1183,7 @@ export default function ImoveisPage() {
                     placeholder="Ex: 120.5"
                     style={estiloInputForm}
                     onFocus={(e) => { e.currentTarget.style.borderColor = 'var(--gold, #c49818)' }}
-                    onBlur={(e) => { e.currentTarget.style.borderColor = 'rgba(255,255,255,0.1)' }}
+                    onBlur={(e) => { e.currentTarget.style.borderColor = 'var(--paper-3, #dddac8)' }}
                   />
                 </CampoForm>
                 <CampoForm label="Vagas">
@@ -1195,7 +1195,7 @@ export default function ImoveisPage() {
                     onChange={(e) => setForm((f) => ({ ...f, vagas: e.target.value }))}
                     style={estiloInputForm}
                     onFocus={(e) => { e.currentTarget.style.borderColor = 'var(--gold, #c49818)' }}
-                    onBlur={(e) => { e.currentTarget.style.borderColor = 'rgba(255,255,255,0.1)' }}
+                    onBlur={(e) => { e.currentTarget.style.borderColor = 'var(--paper-3, #dddac8)' }}
                   />
                 </CampoForm>
               </div>
@@ -1209,7 +1209,7 @@ export default function ImoveisPage() {
                   placeholder="Ex: Rua das Flores, 123"
                   style={estiloInputForm}
                   onFocus={(e) => { e.currentTarget.style.borderColor = 'var(--gold, #c49818)' }}
-                  onBlur={(e) => { e.currentTarget.style.borderColor = 'rgba(255,255,255,0.1)' }}
+                  onBlur={(e) => { e.currentTarget.style.borderColor = 'var(--paper-3, #dddac8)' }}
                 />
               </CampoForm>
 
@@ -1227,7 +1227,7 @@ export default function ImoveisPage() {
                     fontFamily: 'inherit',
                   }}
                   onFocus={(e) => { e.currentTarget.style.borderColor = 'var(--gold, #c49818)' }}
-                  onBlur={(e) => { e.currentTarget.style.borderColor = 'rgba(255,255,255,0.1)' }}
+                  onBlur={(e) => { e.currentTarget.style.borderColor = 'var(--paper-3, #dddac8)' }}
                 />
               </CampoForm>
             </div>
@@ -1236,7 +1236,7 @@ export default function ImoveisPage() {
             <div
               style={{
                 padding: '12px 16px',
-                borderTop: '1px solid rgba(255,255,255,0.08)',
+                borderTop: '1px solid var(--paper-3, #dddac8)',
                 display: 'flex',
                 gap: '8px',
                 flexShrink: 0,
@@ -1248,12 +1248,12 @@ export default function ImoveisPage() {
                   flex: 1,
                   padding: '9px',
                   borderRadius: '8px',
-                  border: 'none',
+                  border: '1px solid var(--paper-3, #dddac8)',
                   fontSize: '13px',
                   fontWeight: 700,
                   cursor: 'pointer',
-                  backgroundColor: 'var(--color-green-mid)',
-                  color: 'var(--color-white)',
+                  backgroundColor: 'var(--paper-3, #dddac8)',
+                  color: 'var(--ink, #1b3a2f)',
                 }}
               >
                 Cancelar
@@ -1265,12 +1265,12 @@ export default function ImoveisPage() {
                   flex: 1,
                   padding: '9px',
                   borderRadius: '8px',
-                  border: 'none',
+                  border: '1px solid var(--gold, #c49818)',
                   fontSize: '13px',
                   fontWeight: 700,
                   cursor: salvando ? 'not-allowed' : 'pointer',
-                  backgroundColor: 'var(--gold, #c49818)',
-                  color: '#fff',
+                  backgroundColor: 'var(--ink, #1b3a2f)',
+                  color: 'var(--gold, #c49818)',
                   opacity: salvando ? 0.5 : 1,
                 }}
               >
@@ -1280,7 +1280,7 @@ export default function ImoveisPage() {
           </>
         ) : (
           <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <p style={{ color: 'rgba(255,255,255,0.2)', fontSize: '13px' }}>
+            <p style={{ color: 'var(--sepia, #7a9e88)', fontSize: '13px' }}>
               Selecione ou crie um imóvel
             </p>
           </div>
@@ -1304,7 +1304,7 @@ const estiloSpinner: React.CSSProperties = {
 }
 
 const estiloSecaoTitulo: React.CSSProperties = {
-  color: 'rgba(255,255,255,0.4)',
+  color: 'var(--sepia, #7a9e88)',
   fontSize: '11px',
   fontWeight: 700,
   textTransform: 'uppercase',
@@ -1315,9 +1315,9 @@ const estiloSecaoTitulo: React.CSSProperties = {
 const estiloInputForm: React.CSSProperties = {
   width: '100%',
   boxSizing: 'border-box',
-  backgroundColor: 'var(--color-green-mid)',
-  color: 'var(--color-white)',
-  border: '1px solid rgba(255,255,255,0.1)',
+  backgroundColor: 'var(--paper-2, #eae6d4)',
+  color: 'var(--ink, #1b3a2f)',
+  border: '1px solid var(--paper-3, #dddac8)',
   borderRadius: '8px',
   padding: '8px 10px',
   fontSize: '13px',
@@ -1327,9 +1327,9 @@ const estiloInputForm: React.CSSProperties = {
 const estiloSelectForm: React.CSSProperties = {
   width: '100%',
   boxSizing: 'border-box',
-  backgroundColor: 'var(--color-green-mid)',
-  color: 'var(--color-white)',
-  border: '1px solid rgba(255,255,255,0.1)',
+  backgroundColor: 'var(--paper-2, #eae6d4)',
+  color: 'var(--ink, #1b3a2f)',
+  border: '1px solid var(--paper-3, #dddac8)',
   borderRadius: '8px',
   padding: '8px 10px',
   fontSize: '13px',
@@ -1339,17 +1339,17 @@ const estiloSelectForm: React.CSSProperties = {
 }
 
 const estiloOption: React.CSSProperties = {
-  color: '#fff',
-  backgroundColor: '#374C4B',
+  color: 'var(--ink, #1b3a2f)',
+  backgroundColor: 'var(--paper-2, #eae6d4)',
 }
 
 function estiloSelectFiltro(temValor: boolean): React.CSSProperties {
   return {
     width: '100%',
     boxSizing: 'border-box',
-    backgroundColor: 'var(--color-green-mid)',
-    color: temValor ? 'var(--color-white)' : 'rgba(255,255,255,0.4)',
-    border: '1px solid rgba(255,255,255,0.08)',
+    backgroundColor: 'var(--paper-2, #eae6d4)',
+    color: temValor ? 'var(--ink, #1b3a2f)' : 'var(--sepia, #7a9e88)',
+    border: '1px solid var(--paper-3, #dddac8)',
     borderRadius: '7px',
     padding: '7px 10px',
     fontSize: '12px',
@@ -1387,7 +1387,7 @@ function CampoForm({ label, children }: { label: string; children: React.ReactNo
       <label
         style={{
           display: 'block',
-          color: 'var(--color-white)',
+          color: 'var(--ink, #1b3a2f)',
           fontSize: '12px',
           fontWeight: 700,
           marginBottom: '5px',

@@ -17,14 +17,15 @@ import type { MapaRegioesRef, Ponto, RegiaoMapa } from '@/components/admin/MapaR
 const MapaRegioes = dynamic(() => import('@/components/admin/MapaRegioes'), { ssr: false })
 
 type Estado = { id: string; nome: string }
-type CidadeRaw = { id: number; nome: string; estadoId?: string; estado_id?: string; prefixo?: string; latCentro?: number; lat_centro?: number; lngCentro?: number; lng_centro?: number; zoomPadrao?: number; zoom_padrao?: number }
-type Cidade = { id: number; nome: string; estadoId: string; prefixo: string; latCentro: number; lngCentro: number; zoomPadrao: number }
+type CidadeRaw = { id: number; nome: string; estado?: { id: string; nome: string }; estadoId?: string; estado_id?: string; prefixo?: string; latCentro?: number; lat_centro?: number; lngCentro?: number; lng_centro?: number; zoomPadrao?: number; zoom_padrao?: number }
+type Cidade = { id: number; nome: string; estadoId: string; estadoNome: string; prefixo: string; latCentro: number; lngCentro: number; zoomPadrao: number }
 
 function normalizarCidade(r: CidadeRaw): Cidade {
   return {
     id: r.id,
     nome: r.nome,
-    estadoId: r.estadoId ?? r.estado_id ?? '',
+    estadoId: r.estado?.id ?? r.estadoId ?? r.estado_id ?? '',
+    estadoNome: r.estado?.nome ?? '',
     prefixo: r.prefixo ?? '',
     latCentro: r.latCentro ?? r.lat_centro ?? 0,
     lngCentro: r.lngCentro ?? r.lng_centro ?? 0,
@@ -43,6 +44,8 @@ export default function RegioesPage() {
   const mapaRef = useRef<MapaRegioesRef>(null)
 
   const [estados, setEstados] = useState<Estado[]>([])
+  const [todosEstados, setTodosEstados] = useState<Estado[]>([])
+  const [todasCidades, setTodasCidades] = useState<Cidade[]>([])
   const [cidades, setCidades] = useState<Cidade[]>([])
   const [regioes, setRegioes] = useState<Regiao[]>([])
 
@@ -79,56 +82,61 @@ export default function RegioesPage() {
   const cidadeSelRef = useRef<Cidade | null>(null)
   const regioesRef = useRef<Regiao[]>([])
   const mapaReadyRef = useRef(false)
+  const todasCidadesRef = useRef<Cidade[]>([])
 
   useEffect(() => { cidadeSelRef.current = cidadeSel }, [cidadeSel])
   useEffect(() => { regioesRef.current = regioes }, [regioes])
+  useEffect(() => { todasCidadesRef.current = todasCidades }, [todasCidades])
 
-  // ── Inicialização sequencial ──────────────────────────────
-  // 1. Carrega estados
-  // 2. Lê cookie e carrega cidades do estado salvo
-  // 3. Restaura cidade salva
-  // 4. Carrega regiões da cidade
-  // (mover mapa e renderizar regiões acontece em handleMapaReady ou aqui se mapa já estiver pronto)
+  // ── Inicialização ──────────────────────────────────────────
+  // 1. Carrega todas as cidades de uma vez (já vêm com estado embutido)
+  // 2. Deriva estados únicos a partir das cidades
+  // 3. Restaura seleção salva e carrega regiões
   useEffect(() => {
     async function init() {
-      // 1. Estados
-      const rEstados = await getEstadosApi()
-      if (!rEstados.ok) return
-      const listaEstados: Estado[] = await rEstados.json()
-      setEstados(listaEstados)
+      const [rCidades, rEstados] = await Promise.all([getCidadesApi(), getEstadosApi()])
+      if (!rCidades.ok || !rEstados.ok) return
 
-      // 2. Cookie
+      const listaCidadesAll: Cidade[] = (await rCidades.json()).map(normalizarCidade)
+      const listaEstadosAll: Estado[] = await rEstados.json()
+
+      setTodasCidades(listaCidadesAll)
+      setTodosEstados(listaEstadosAll)
+
+      // Deriva estados com cidades cadastradas para o select do header
+      const estadosMap = new Map<string, Estado>()
+      listaCidadesAll.forEach((c) => {
+        if (!estadosMap.has(c.estadoId)) {
+          estadosMap.set(c.estadoId, { id: c.estadoId, nome: c.estadoNome })
+        }
+      })
+      setEstados(Array.from(estadosMap.values()))
+
+      // Restaura seleção salva
       const estadoSalvo = localStorage.getItem('regioes:estado') ?? ''
       const cidadeIdSalvo = Number(localStorage.getItem('regioes:cidadeId')) || null
       if (!estadoSalvo) return
 
       setEstadoSel(estadoSalvo)
-
-      // 3. Cidades do estado salvo
-      const rCidades = await getCidadesApi(estadoSalvo)
-      if (!rCidades.ok) return
-      const listaCidades: Cidade[] = (await rCidades.json()).map(normalizarCidade)
-      setCidades(listaCidades)
+      const cidadesFiltradas = listaCidadesAll.filter((c) => c.estadoId === estadoSalvo)
+      setCidades(cidadesFiltradas)
 
       if (!cidadeIdSalvo) return
-      const cidade = listaCidades.find((c) => c.id === cidadeIdSalvo)
+      const cidade = cidadesFiltradas.find((c) => c.id === cidadeIdSalvo)
       if (!cidade) return
 
       setCidadeSel(cidade)
       cidadeSelRef.current = cidade
 
-      // 4. Regiões da cidade
       const rRegioes = await getRegioesPorCidadeApi(cidade.id)
       if (!rRegioes.ok) return
       const listaRegioes: Regiao[] = await rRegioes.json()
       setRegioes(listaRegioes)
       regioesRef.current = listaRegioes
 
-      // 5. Se o mapa já estiver pronto, move e renderiza agora
       if (mapaReadyRef.current) {
         aplicarCidadeNoMapa(cidade, listaRegioes)
       }
-      // Caso contrário, handleMapaReady vai usar os refs quando o mapa terminar de carregar
     }
 
     init()
@@ -156,24 +164,10 @@ export default function RegioesPage() {
     }
   }
 
-  // Quando o usuário muda o estado manualmente no filtro
-  const initDone = useRef(false)
-  useEffect(() => {
-    // Ignora o primeiro disparo — a inicialização sequencial já cuida disso
-    if (!initDone.current) { initDone.current = true; return }
-    if (!estadoSel) { setCidades([]); setCidadeSel(null); return }
-    localStorage.setItem('regioes:estado', estadoSel)
-    getCidadesApi(estadoSel).then(async (r) => {
-      if (r.ok) setCidades((await r.json()).map(normalizarCidade))
-      else setCidades([])
-    })
-    setCidadeSel(null)
-  }, [estadoSel])
 
-  // Quando o usuário muda de cidade manualmente no filtro
+  // Quando cidade muda — move mapa e carrega regiões
   useEffect(() => {
     if (!cidadeSel) { setRegioes([]); return }
-    localStorage.setItem('regioes:cidadeId', cidadeSel.id.toString())
     if (mapaReadyRef.current) {
       mapaRef.current?.moverParaCidade(cidadeSel.latCentro, cidadeSel.lngCentro, cidadeSel.zoomPadrao)
     }
@@ -357,11 +351,17 @@ export default function RegioesPage() {
         setModalCidade(false)
         setNovaCidade({ nome: '', estadoId: '', prefixo: '', latCentro: '', lngCentro: '', zoomPadrao: '13', ativa: true })
         setMunicipiosIBGE([])
-        // Recarrega as cidades do estado selecionado no header
-        if (novaCidade.estadoId === estadoSel) {
-          getCidadesApi(estadoSel).then(async (r) => {
-            if (r.ok) setCidades((await r.json()).map(normalizarCidade))
+        // Recarrega todas as cidades e recalcula estados disponíveis
+        const rC = await getCidadesApi()
+        if (rC.ok) {
+          const todasAtualizadas: Cidade[] = (await rC.json()).map(normalizarCidade)
+          setTodasCidades(todasAtualizadas)
+          const estadosMap = new Map<string, Estado>()
+          todasAtualizadas.forEach((c) => {
+            if (!estadosMap.has(c.estadoId)) estadosMap.set(c.estadoId, { id: c.estadoId, nome: c.estadoNome })
           })
+          setEstados(Array.from(estadosMap.values()))
+          if (estadoSel) setCidades(todasAtualizadas.filter((c) => c.estadoId === estadoSel))
         }
       } else {
         const err = await res.json().catch(() => null)
@@ -408,13 +408,14 @@ export default function RegioesPage() {
       if (res.ok) {
         exibirToast('Cidade atualizada!', 'sucesso')
         setModalEditarCidade(false)
-        // Recarrega cidades e atualiza cidadeSel com os novos dados
-        const r = await getCidadesApi(editCidade.estadoId)
-        if (r.ok) {
-          const lista: Cidade[] = (await r.json()).map(normalizarCidade)
-          setCidades(lista)
-          const atualizada = lista.find((c) => c.id === cidadeSel.id) ?? null
-          setCidadeSel(atualizada)
+        // Recarrega todas as cidades e atualiza cidadeSel
+        const rC = await getCidadesApi()
+        if (rC.ok) {
+          const todasAtualizadas: Cidade[] = (await rC.json()).map(normalizarCidade)
+          setTodasCidades(todasAtualizadas)
+          const filtradas = todasAtualizadas.filter((c) => c.estadoId === estadoSel)
+          setCidades(filtradas)
+          setCidadeSel(filtradas.find((c) => c.id === cidadeSel.id) ?? null)
         }
       } else {
         const err = await res.json().catch(() => null)
@@ -454,13 +455,13 @@ export default function RegioesPage() {
           alignItems: 'center',
           gap: '12px',
           padding: '12px 20px',
-          borderBottom: '1px solid rgba(255,255,255,0.08)',
-          backgroundColor: 'var(--color-green-dark)',
+          borderBottom: '3px solid var(--gold, #c49818)',
+          backgroundColor: 'var(--ink, #1b3a2f)',
           flexShrink: 0,
           flexWrap: 'wrap',
         }}
       >
-        <h1 style={{ color: 'var(--color-white)', fontSize: '16px', fontWeight: 800, margin: 0, marginRight: '8px' }}>
+        <h1 style={{ color: '#ffffff', fontSize: '16px', fontWeight: 800, margin: 0, marginRight: '8px', fontFamily: "'Playfair Display', serif" }}>
           Regiões
         </h1>
 
@@ -468,7 +469,16 @@ export default function RegioesPage() {
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flex: 1, justifyContent: 'center', flexWrap: 'wrap' }}>
           <Select
             value={estadoSel}
-            onChange={setEstadoSel}
+            onChange={(v) => {
+              setEstadoSel(v)
+              localStorage.setItem('regioes:estado', v)
+              const filtradas = todasCidadesRef.current.filter((c) => c.estadoId === v)
+              setCidades(filtradas)
+              const primeira = filtradas[0] ?? null
+              setCidadeSel(primeira)
+              if (primeira) localStorage.setItem('regioes:cidadeId', primeira.id.toString())
+              else localStorage.removeItem('regioes:cidadeId')
+            }}
             placeholder="Selecione o estado"
             options={estados.map((e) => ({ value: e.id, label: e.nome }))}
             width="200px"
@@ -478,6 +488,7 @@ export default function RegioesPage() {
             onChange={(v) => {
               const c = cidades.find((c) => c.id.toString() === v) ?? null
               setCidadeSel(c)
+              if (c) localStorage.setItem('regioes:cidadeId', c.id.toString())
             }}
             placeholder="Selecione a cidade"
             options={cidades.map((c) => ({ value: c.id.toString(), label: c.nome }))}
@@ -487,9 +498,9 @@ export default function RegioesPage() {
           <button
             onClick={() => setModalCidade(true)}
             style={{
-              backgroundColor: 'rgba(74,222,128,0.12)',
-              color: '#4ADE80',
-              border: '1px solid rgba(74,222,128,0.25)',
+              backgroundColor: 'var(--ink, #1b3a2f)',
+              color: 'var(--gold, #c49818)',
+              border: '1px solid var(--gold, #c49818)',
               borderRadius: '8px',
               padding: '8px 14px',
               fontSize: '13px',
@@ -504,9 +515,9 @@ export default function RegioesPage() {
             <button
               onClick={abrirEditarCidade}
               style={{
-                backgroundColor: 'rgba(196,152,24,0.12)',
-                color: '#c49818',
-                border: '1px solid rgba(196,152,24,0.25)',
+                backgroundColor: 'var(--ink, #1b3a2f)',
+                color: 'var(--gold, #c49818)',
+                border: '1px solid var(--gold, #c49818)',
                 borderRadius: '8px',
                 padding: '8px 14px',
                 fontSize: '13px',
@@ -525,9 +536,9 @@ export default function RegioesPage() {
           onClick={() => setPainelAberto((v) => !v)}
           className="md:hidden"
           style={{
-            backgroundColor: 'var(--color-green-mid)',
-            color: 'var(--color-white)',
-            border: 'none',
+            backgroundColor: 'rgba(255,255,255,0.08)',
+            color: '#ffffff',
+            border: '1px solid rgba(255,255,255,0.2)',
             borderRadius: '8px',
             padding: '8px 12px',
             fontSize: '12px',
@@ -611,8 +622,8 @@ export default function RegioesPage() {
             width: '340px',
             flexShrink: 0,
             height: '100%',
-            backgroundColor: 'var(--color-green-dark)',
-            borderLeft: '1px solid rgba(255,255,255,0.08)',
+            backgroundColor: 'var(--paper, #f4f1e6)',
+            borderLeft: '1px solid var(--gold, #c49818)',
             display: painelAberto ? 'flex' : 'none',
             flexDirection: 'column',
             overflow: 'hidden',
@@ -622,8 +633,8 @@ export default function RegioesPage() {
           {modoEdicao ? (
             <div style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
               {/* Header */}
-              <div style={{ padding: '16px 20px', borderBottom: '1px solid rgba(255,255,255,0.08)', flexShrink: 0 }}>
-                <p style={{ color: 'var(--color-white)', fontSize: '14px', fontWeight: 800, margin: '0 0 12px 0' }}>
+              <div style={{ padding: '16px 20px', borderBottom: '1px solid var(--gold, #c49818)', flexShrink: 0 }}>
+                <p style={{ color: 'var(--ink, #1b3a2f)', fontSize: '14px', fontWeight: 800, margin: '0 0 12px 0', fontFamily: "'Playfair Display', serif" }}>
                   Editando: {modoEdicao.regiao.nome}
                 </p>
                 <Campo
@@ -631,14 +642,14 @@ export default function RegioesPage() {
                   value={modoEdicao.nomeEdit}
                   onChange={(v) => setModoEdicao({ ...modoEdicao, nomeEdit: v })}
                 />
-                <p style={{ color: 'var(--color-gray-dark)', fontSize: '11px', margin: '10px 0 0 0' }}>
+                <p style={{ color: 'var(--ink, #1b3a2f)', fontSize: '11px', margin: '10px 0 0 0' }}>
                   Arraste os marcadores no mapa ou edite as coordenadas abaixo.
                 </p>
               </div>
 
               {/* Lista de pontos */}
               <div style={{ flex: 1, overflowY: 'auto', padding: '12px 20px' }}>
-                <p style={{ color: 'var(--color-gray-dark)', fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', margin: '0 0 8px 0' }}>
+                <p style={{ color: 'var(--ink, #1b3a2f)', fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', margin: '0 0 8px 0' }}>
                   Pontos ({modoEdicao.pontos.length})
                 </p>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
@@ -647,14 +658,14 @@ export default function RegioesPage() {
                       <div
                         key={i}
                         style={{
-                          backgroundColor: 'var(--color-green-mid)',
-                          border: '1px solid transparent',
+                          backgroundColor: 'var(--paper-2, #eae6d4)',
+                          border: '1px solid var(--paper-3, #dddac8)',
                           borderRadius: '8px',
                           padding: '8px 10px',
                         }}
                       >
                         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '6px' }}>
-                          <span style={{ color: 'rgba(255,255,255,0.5)', fontSize: '11px', fontWeight: 700 }}>
+                          <span style={{ color: 'var(--ink, #1b3a2f)', fontSize: '11px', fontWeight: 700 }}>
                             Ponto {i + 1}
                           </span>
                           {modoEdicao.pontos.length > 3 && (
@@ -671,7 +682,7 @@ export default function RegioesPage() {
                         </div>
                         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px' }}>
                           <div>
-                            <label style={{ color: 'var(--color-gray-dark)', fontSize: '10px', display: 'block', marginBottom: '2px' }}>Lat</label>
+                            <label style={{ color: 'var(--ink, #1b3a2f)', fontSize: '10px', display: 'block', marginBottom: '2px' }}>Lat</label>
                             <input
                               type="number"
                               step="any"
@@ -683,16 +694,16 @@ export default function RegioesPage() {
                               }}
                               style={{
                                 width: '100%', boxSizing: 'border-box',
-                                backgroundColor: 'var(--color-green-dark)',
-                                color: 'var(--color-white)',
-                                border: '1px solid rgba(255,255,255,0.1)',
+                                backgroundColor: 'var(--paper, #f4f1e6)',
+                                color: 'var(--ink, #1b3a2f)',
+                                border: '1px solid var(--paper-3, #dddac8)',
                                 borderRadius: '4px', padding: '4px 6px',
                                 fontSize: '11px', outline: 'none',
                               }}
                             />
                           </div>
                           <div>
-                            <label style={{ color: 'var(--color-gray-dark)', fontSize: '10px', display: 'block', marginBottom: '2px' }}>Lng</label>
+                            <label style={{ color: 'var(--ink, #1b3a2f)', fontSize: '10px', display: 'block', marginBottom: '2px' }}>Lng</label>
                             <input
                               type="number"
                               step="any"
@@ -704,9 +715,9 @@ export default function RegioesPage() {
                               }}
                               style={{
                                 width: '100%', boxSizing: 'border-box',
-                                backgroundColor: 'var(--color-green-dark)',
-                                color: 'var(--color-white)',
-                                border: '1px solid rgba(255,255,255,0.1)',
+                                backgroundColor: 'var(--paper, #f4f1e6)',
+                                color: 'var(--ink, #1b3a2f)',
+                                border: '1px solid var(--paper-3, #dddac8)',
                                 borderRadius: '4px', padding: '4px 6px',
                                 fontSize: '11px', outline: 'none',
                               }}
@@ -720,7 +731,7 @@ export default function RegioesPage() {
               </div>
 
               {/* Botões */}
-              <div style={{ padding: '12px 20px', borderTop: '1px solid rgba(255,255,255,0.08)', display: 'flex', gap: '8px', flexShrink: 0 }}>
+              <div style={{ padding: '12px 20px', borderTop: '1px solid var(--gold, #c49818)', display: 'flex', gap: '8px', flexShrink: 0 }}>
                 <button onClick={cancelarEdicao} style={btnSecundario}>Cancelar</button>
                 <button onClick={salvarEdicao} disabled={salvando} style={btnPrimario(salvando)}>
                   {salvando ? 'Salvando...' : 'Salvar'}
@@ -731,13 +742,13 @@ export default function RegioesPage() {
             /* ── Modo padrão ── */
             <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
               {/* Formulário nova região */}
-              <div style={{ padding: '20px', borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
-                <p style={{ color: 'var(--color-white)', fontSize: '14px', fontWeight: 800, margin: '0 0 14px 0' }}>
+              <div style={{ padding: '20px', borderBottom: '1px solid var(--gold, #c49818)' }}>
+                <p style={{ color: 'var(--ink, #1b3a2f)', fontSize: '14px', fontWeight: 800, margin: '0 0 14px 0', fontFamily: "'Playfair Display', serif" }}>
                   Nova região
                 </p>
 
                 {!podeDesenhar && (
-                  <p style={{ color: 'var(--color-gray-dark)', fontSize: '12px', margin: '0 0 12px 0' }}>
+                  <p style={{ color: 'var(--ink, #1b3a2f)', fontSize: '12px', margin: '0 0 12px 0' }}>
                     Selecione uma cidade no cabeçalho para habilitar o desenho.
                   </p>
                 )}
@@ -751,17 +762,13 @@ export default function RegioesPage() {
                         flex: 1,
                         padding: '9px',
                         borderRadius: '8px',
-                        border: 'none',
                         fontSize: '13px',
                         fontWeight: 700,
                         cursor: podeDesenhar ? 'pointer' : 'not-allowed',
-                        backgroundColor: desenhando
-                          ? 'rgba(248,113,113,0.15)'
-                          : desenhoFinalizado
-                          ? 'rgba(74,222,128,0.15)'
-                          : 'rgba(196,152,24,0.15)',
-                        color: desenhando ? '#F87171' : desenhoFinalizado ? '#4ADE80' : '#c49818',
                         opacity: podeDesenhar ? 1 : 0.4,
+                        backgroundColor: desenhando ? 'rgba(248,113,113,0.1)' : 'var(--ink, #1b3a2f)',
+                        color: desenhando ? '#F87171' : 'var(--gold, #c49818)',
+                        border: desenhando ? '1px solid #F87171' : '1px solid var(--gold, #c49818)',
                       }}
                     >
                       {desenhando ? '✕ Parar' : desenhoFinalizado ? '✓ Finalizado' : '✏ Desenhar'}
@@ -791,7 +798,7 @@ export default function RegioesPage() {
                   </button>
 
                   {pontos.length > 0 && pontos.length < 3 && (
-                    <p style={{ color: 'var(--color-gray-dark)', fontSize: '11px', margin: 0, textAlign: 'center' }}>
+                    <p style={{ color: 'var(--ink, #1b3a2f)', fontSize: '11px', margin: 0, textAlign: 'center' }}>
                       Adicione pelo menos 3 pontos para salvar.
                     </p>
                   )}
@@ -801,23 +808,24 @@ export default function RegioesPage() {
               {/* Lista de regiões */}
               <div style={{ flex: 1, overflowY: 'auto', padding: '16px 20px' }}>
                 {!cidadeSel ? (
-                  <p style={{ color: 'var(--color-gray-dark)', fontSize: '12px', margin: 0 }}>
+                  <p style={{ color: 'var(--ink, #1b3a2f)', fontSize: '12px', margin: 0 }}>
                     Selecione uma cidade para ver as regiões.
                   </p>
                 ) : regioes.length === 0 ? (
-                  <p style={{ color: 'var(--color-gray-dark)', fontSize: '12px', margin: 0 }}>
+                  <p style={{ color: 'var(--ink, #1b3a2f)', fontSize: '12px', margin: 0 }}>
                     Nenhuma região cadastrada para esta cidade.
                   </p>
                 ) : (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                    <p style={{ color: 'var(--color-gray-dark)', fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', margin: '0 0 4px 0' }}>
+                    <p style={{ color: 'var(--ink, #1b3a2f)', fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', margin: '0 0 4px 0', fontFamily: "'Playfair Display', serif" }}>
                       Regiões cadastradas
                     </p>
                     {regioes.map((r) => (
                       <div
                         key={r.id}
                         style={{
-                          backgroundColor: 'var(--color-green-mid)',
+                          backgroundColor: 'var(--paper-2, #eae6d4)',
+                          border: '1px solid var(--gold, #c49818)',
                           borderRadius: '10px',
                           padding: '10px 12px',
                           display: 'flex',
@@ -827,7 +835,7 @@ export default function RegioesPage() {
                         }}
                       >
                         <div style={{ flex: 1, minWidth: 0 }}>
-                          <p style={{ color: 'var(--color-white)', fontSize: '13px', fontWeight: 700, margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          <p style={{ color: 'var(--ink, #1b3a2f)', fontSize: '13px', fontWeight: 700, margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                             {r.nome}
                           </p>
                         </div>
@@ -835,9 +843,9 @@ export default function RegioesPage() {
                           <button
                             onClick={() => iniciarEdicao(r)}
                             style={{
-                              backgroundColor: 'rgba(196,152,24,0.15)',
-                              color: '#c49818',
-                              border: 'none',
+                              backgroundColor: 'var(--ink, #1b3a2f)',
+                              color: 'var(--gold, #c49818)',
+                              border: '1px solid var(--gold, #c49818)',
                               borderRadius: '6px',
                               padding: '5px 10px',
                               fontSize: '12px',
@@ -885,8 +893,9 @@ export default function RegioesPage() {
           <div
             onClick={(e) => e.stopPropagation()}
             style={{
-              backgroundColor: 'var(--color-green-dark)',
-              border: '1px solid rgba(255,255,255,0.1)',
+              backgroundColor: 'var(--paper, #f4f1e6)',
+              border: '1px solid var(--gold, #c49818)',
+              borderTop: '3px solid var(--gold, #c49818)',
               borderRadius: '14px',
               padding: '28px',
               width: '100%',
@@ -897,12 +906,12 @@ export default function RegioesPage() {
             }}
           >
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-              <p style={{ color: 'var(--color-white)', fontSize: '15px', fontWeight: 800, margin: 0 }}>
+              <p style={{ color: 'var(--ink, #1b3a2f)', fontSize: '15px', fontWeight: 800, margin: 0, fontFamily: "'Playfair Display', serif" }}>
                 Cadastrar cidade
               </p>
               <button
                 onClick={() => { setModalCidade(false); setMunicipiosIBGE([]) }}
-                style={{ background: 'none', border: 'none', color: 'rgba(255,255,255,0.4)', fontSize: '18px', cursor: 'pointer', lineHeight: 1 }}
+                style={{ backgroundColor: 'var(--paper-3, #dddac8)', border: 'none', color: 'var(--ink, #1b3a2f)', fontSize: '14px', cursor: 'pointer', lineHeight: 1, borderRadius: '6px', padding: '4px 8px' }}
               >
                 ✕
               </button>
@@ -911,7 +920,7 @@ export default function RegioesPage() {
             <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
               {/* Estado */}
               <div>
-                <label style={{ display: 'block', color: 'var(--color-white)', fontSize: '13px', fontWeight: 700, marginBottom: '6px' }}>
+                <label style={{ display: 'block', color: 'var(--ink, #1b3a2f)', fontSize: '13px', fontWeight: 700, marginBottom: '6px' }}>
                   Estado
                 </label>
                 <select
@@ -924,16 +933,16 @@ export default function RegioesPage() {
                   }}
                   style={{
                     width: '100%', boxSizing: 'border-box',
-                    backgroundColor: 'var(--color-green-mid)',
-                    color: novaCidade.estadoId ? 'var(--color-white)' : 'rgba(255,255,255,0.4)',
-                    border: '1px solid rgba(255,255,255,0.1)',
+                    backgroundColor: 'var(--paper-2, #eae6d4)',
+                    color: 'var(--ink, #1b3a2f)',
+                    border: '1px solid var(--paper-3, #dddac8)',
                     borderRadius: '8px', padding: '9px 12px',
                     fontSize: '13px', fontWeight: 700, outline: 'none',
                   }}
                 >
                   <option value="" disabled hidden>Selecione o estado</option>
-                  {estados.map((e) => (
-                    <option key={e.id} value={e.id} style={{ color: '#fff', backgroundColor: '#374C4B' }}>
+                  {todosEstados.map((e) => (
+                    <option key={e.id} value={e.id}>
                       {e.nome}
                     </option>
                   ))}
@@ -942,7 +951,7 @@ export default function RegioesPage() {
 
               {/* Município (IBGE) */}
               <div>
-                <label style={{ display: 'block', color: 'var(--color-white)', fontSize: '13px', fontWeight: 700, marginBottom: '6px' }}>
+                <label style={{ display: 'block', color: 'var(--ink, #1b3a2f)', fontSize: '13px', fontWeight: 700, marginBottom: '6px' }}>
                   Cidade
                 </label>
                 <select
@@ -951,9 +960,9 @@ export default function RegioesPage() {
                   onChange={(e) => setNovaCidade((p) => ({ ...p, nome: e.target.value }))}
                   style={{
                     width: '100%', boxSizing: 'border-box',
-                    backgroundColor: 'var(--color-green-mid)',
-                    color: novaCidade.nome ? 'var(--color-white)' : 'rgba(255,255,255,0.4)',
-                    border: '1px solid rgba(255,255,255,0.1)',
+                    backgroundColor: 'var(--paper-2, #eae6d4)',
+                    color: 'var(--ink, #1b3a2f)',
+                    border: '1px solid var(--paper-3, #dddac8)',
                     borderRadius: '8px', padding: '9px 12px',
                     fontSize: '13px', fontWeight: 700, outline: 'none',
                     opacity: (!novaCidade.estadoId || carregandoMunicipios) ? 0.4 : 1,
@@ -964,7 +973,7 @@ export default function RegioesPage() {
                     {carregandoMunicipios ? 'Carregando...' : 'Selecione a cidade'}
                   </option>
                   {municipiosIBGE.map((m) => (
-                    <option key={m.id} value={m.nome} style={{ color: '#fff', backgroundColor: '#374C4B' }}>
+                    <option key={m.id} value={m.nome}>
                       {m.nome}
                     </option>
                   ))}
@@ -973,8 +982,8 @@ export default function RegioesPage() {
 
               {/* Prefixo */}
               <div>
-                <label style={{ display: 'block', color: 'var(--color-white)', fontSize: '13px', fontWeight: 700, marginBottom: '6px' }}>
-                  Prefixo <span style={{ color: 'rgba(255,255,255,0.35)', fontWeight: 400, fontSize: '11px' }}>(3 letras maiúsculas — ex: ARC)</span>
+                <label style={{ display: 'block', color: 'var(--ink, #1b3a2f)', fontSize: '13px', fontWeight: 700, marginBottom: '6px' }}>
+                  Prefixo <span style={{ color: 'var(--sepia, #7a9e88)', fontWeight: 400, fontSize: '11px' }}>(3 letras maiúsculas — ex: ARC)</span>
                 </label>
                 <input
                   type="text"
@@ -1045,8 +1054,9 @@ export default function RegioesPage() {
           <div
             onClick={(e) => e.stopPropagation()}
             style={{
-              backgroundColor: 'var(--color-green-dark)',
-              border: '1px solid rgba(255,255,255,0.1)',
+              backgroundColor: 'var(--paper, #f4f1e6)',
+              border: '1px solid var(--gold, #c49818)',
+              borderTop: '3px solid var(--gold, #c49818)',
               borderRadius: '14px',
               padding: '28px',
               width: '100%',
@@ -1057,26 +1067,25 @@ export default function RegioesPage() {
             }}
           >
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-              <p style={{ color: 'var(--color-white)', fontSize: '15px', fontWeight: 800, margin: 0 }}>
+              <p style={{ color: 'var(--ink, #1b3a2f)', fontSize: '15px', fontWeight: 800, margin: 0, fontFamily: "'Playfair Display', serif" }}>
                 Editar cidade
               </p>
               <button
                 onClick={() => setModalEditarCidade(false)}
-                style={{ background: 'none', border: 'none', color: 'rgba(255,255,255,0.4)', fontSize: '18px', cursor: 'pointer', lineHeight: 1 }}
+                style={{ backgroundColor: 'var(--paper-3, #dddac8)', border: 'none', color: 'var(--ink, #1b3a2f)', fontSize: '14px', cursor: 'pointer', lineHeight: 1, borderRadius: '6px', padding: '4px 8px' }}
               >
                 ✕
               </button>
             </div>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-              {/* Campos somente leitura — dados do filtro central */}
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
                 <CampoLeitura label="Estado" value={estados.find((e) => e.id === estadoSel)?.nome ?? estadoSel} />
                 <CampoLeitura label="Sigla" value={cidadeSel.prefixo} />
               </div>
               <CampoLeitura label="Cidade" value={cidadeSel.nome} />
 
-              <div style={{ height: '1px', backgroundColor: 'rgba(255,255,255,0.06)' }} />
+              <div style={{ height: '1px', backgroundColor: 'var(--paper-3, #dddac8)' }} />
 
               {/* Lat / Lng */}
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
@@ -1130,24 +1139,24 @@ const btnPrimario = (disabled: boolean): React.CSSProperties => ({
   width: '100%',
   padding: '10px',
   borderRadius: '8px',
-  border: 'none',
+  border: '1px solid var(--gold, #c49818)',
   fontSize: '13px',
   fontWeight: 700,
   cursor: disabled ? 'not-allowed' : 'pointer',
-  backgroundColor: 'var(--gold, #c49818)',
-  color: '#fff',
+  backgroundColor: 'var(--ink, #1b3a2f)',
+  color: 'var(--gold, #c49818)',
   opacity: disabled ? 0.4 : 1,
 })
 
 const btnSecundario: React.CSSProperties = {
   padding: '9px 14px',
   borderRadius: '8px',
-  border: 'none',
+  border: '1px solid var(--paper-3, #dddac8)',
   fontSize: '13px',
   fontWeight: 700,
   cursor: 'pointer',
-  backgroundColor: 'var(--color-green-mid)',
-  color: 'var(--color-white)',
+  backgroundColor: 'var(--paper-3, #dddac8)',
+  color: 'var(--ink, #1b3a2f)',
 }
 
 /* ── Componentes auxiliares ── */
@@ -1166,7 +1175,7 @@ function Campo({
 }) {
   return (
     <div>
-      <label style={{ display: 'block', color: 'var(--color-white)', fontSize: '13px', fontWeight: 700, marginBottom: '6px' }}>
+      <label style={{ display: 'block', color: 'var(--ink, #1b3a2f)', fontSize: '13px', fontWeight: 700, marginBottom: '6px' }}>
         {label}
       </label>
       <input
@@ -1177,9 +1186,9 @@ function Campo({
         disabled={disabled}
         style={{
           width: '100%',
-          backgroundColor: 'var(--color-green-mid)',
-          color: 'var(--color-white)',
-          border: '1px solid transparent',
+          backgroundColor: 'var(--paper-2, #eae6d4)',
+          color: 'var(--ink, #1b3a2f)',
+          border: '1px solid var(--paper-3, #dddac8)',
           borderRadius: '8px',
           padding: '9px 12px',
           fontSize: '13px',
@@ -1188,7 +1197,7 @@ function Campo({
           opacity: disabled ? 0.4 : 1,
         }}
         onFocus={(e) => { if (!disabled) e.currentTarget.style.borderColor = 'var(--gold, #c49818)' }}
-        onBlur={(e) => (e.currentTarget.style.borderColor = 'transparent')}
+        onBlur={(e) => (e.currentTarget.style.borderColor = 'var(--paper-3, #dddac8)')}
       />
     </div>
   )
@@ -1215,9 +1224,9 @@ function Select({
       onChange={(e) => onChange(e.target.value)}
       disabled={disabled}
       style={{
-        backgroundColor: 'var(--color-green-mid)',
-        color: value ? 'var(--color-white)' : 'rgba(255,255,255,0.4)',
-        border: '1px solid rgba(255,255,255,0.1)',
+        backgroundColor: 'rgba(255,255,255,0.08)',
+        color: value ? '#ffffff' : 'rgba(255,255,255,0.4)',
+        border: '1px solid rgba(255,255,255,0.2)',
         borderRadius: '8px',
         padding: '8px 12px',
         fontSize: '13px',
@@ -1230,7 +1239,7 @@ function Select({
     >
       <option value="" disabled hidden>{placeholder}</option>
       {options.map((o) => (
-        <option key={o.value} value={o.value} style={{ color: '#fff', backgroundColor: '#374C4B' }}>
+        <option key={o.value} value={o.value} style={{ color: '#fff', backgroundColor: '#1b3a2f' }}>
           {o.label}
         </option>
       ))}
@@ -1241,13 +1250,14 @@ function Select({
 const estiloInputModal: React.CSSProperties = {
   width: '100%',
   boxSizing: 'border-box',
-  backgroundColor: 'var(--color-green-mid)',
-  color: 'var(--color-white)',
-  border: '1px solid rgba(255,255,255,0.1)',
+  backgroundColor: 'var(--paper-2, #eae6d4)',
+  color: 'var(--ink, #1b3a2f)',
+  border: '1px solid var(--paper-3, #dddac8)',
   borderRadius: '8px',
   padding: '9px 12px',
   fontSize: '13px',
   outline: 'none',
+  fontWeight: 700,
 }
 
 function CampoModal({
@@ -1265,7 +1275,7 @@ function CampoModal({
 }) {
   return (
     <div>
-      <label style={{ display: 'block', color: 'var(--color-white)', fontSize: '13px', fontWeight: 700, marginBottom: '6px' }}>
+      <label style={{ display: 'block', color: 'var(--ink, #1b3a2f)', fontSize: '13px', fontWeight: 700, marginBottom: '6px' }}>
         {label}
       </label>
       <input
@@ -1276,7 +1286,7 @@ function CampoModal({
         placeholder={placeholder}
         style={estiloInputModal}
         onFocus={(e) => (e.currentTarget.style.borderColor = 'var(--gold, #c49818)')}
-        onBlur={(e) => (e.currentTarget.style.borderColor = 'rgba(255,255,255,0.1)')}
+        onBlur={(e) => (e.currentTarget.style.borderColor = 'var(--paper-3, #dddac8)')}
       />
     </div>
   )
@@ -1285,18 +1295,25 @@ function CampoModal({
 function CampoLeitura({ label, value }: { label: string; value: string }) {
   return (
     <div>
-      <label style={{ display: 'block', color: 'var(--color-gray-dark)', fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '4px' }}>
+      <label style={{ display: 'flex', alignItems: 'center', gap: '4px', color: 'var(--sepia, #7a9e88)', fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '4px' }}>
         {label}
+        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+          <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+          <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+        </svg>
       </label>
       <p style={{
         margin: 0,
-        backgroundColor: 'rgba(255,255,255,0.04)',
-        border: '1px solid rgba(255,255,255,0.07)',
+        backgroundColor: 'var(--paper-3, #dddac8)',
+        border: '1px solid var(--paper-3, #dddac8)',
         borderRadius: '8px',
         padding: '9px 12px',
         fontSize: '13px',
         fontWeight: 700,
-        color: 'var(--color-white)',
+        color: 'var(--sepia, #7a9e88)',
+        cursor: 'not-allowed',
+        userSelect: 'none',
+        opacity: 0.8,
       }}>
         {value}
       </p>

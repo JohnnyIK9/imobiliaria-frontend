@@ -59,75 +59,89 @@ export default function DashboardPage() {
   ]
 
   const atalhos = [
-    { label: 'Gerenciar Imóveis', desc: 'Adicionar, editar e publicar imóveis', href: '/imoveis', icon: HomeIcon, cor: '#40A6F4' },
-    { label: 'Gerenciar Regiões', desc: 'Desenhar e editar regiões no mapa', href: '/regioes', icon: MapIcon, cor: '#4ADE80' },
+    { label: 'Gerenciar Imóveis', desc: 'Adicionar, editar e publicar imóveis', href: '/gestao/imoveis', icon: HomeIcon, cor: '#40A6F4' },
+    { label: 'Gerenciar Regiões', desc: 'Desenhar e editar regiões no mapa', href: '/gestao/regioes', icon: MapIcon, cor: '#4ADE80' },
   ]
 
   return (
-    <div className="h-full overflow-y-auto">
+    <div className="h-full overflow-y-auto" style={{ fontFamily: "'DM Sans', sans-serif" }}>
     <div className="p-8 max-w-5xl mx-auto">
+
       {/* Cabeçalho */}
-      <div className="mb-8">
-        <h1 className="text-2xl font-extrabold" style={{ color: 'var(--color-white)' }}>
+      <div className="mb-6 pb-6" style={{ borderBottom: '1px solid var(--gold, #c49818)' }}>
+        <h1 className="font-extrabold" style={{ fontSize: '36px', color: 'var(--ink, #1b3a2f)', fontFamily: "'Playfair Display', serif" }}>
           Dashboard
         </h1>
-        <p className="mt-1 text-sm font-light" style={{ color: 'var(--color-gray-dark)' }}>
+        <p className="font-bold mt-2" style={{ fontSize: '18px', color: 'var(--ink, #1b3a2f)', fontFamily: "'Playfair Display', serif" }}>
           Visão geral do sistema
         </p>
       </div>
 
       {/* Cards de estatísticas */}
-      <div className="grid grid-cols-2 gap-4 mb-10 lg:grid-cols-4">
-        {cards.map((card) => (
-          <div
-            key={card.label}
-            className="rounded-xl p-5"
-            style={{ backgroundColor: 'var(--color-green-dark)' }}
-          >
+      <div
+        className="mb-8 p-6"
+        style={{ border: '1px solid var(--gold, #c49818)', borderRadius: '12px' }}
+      >
+        <h2 className="text-xs font-bold uppercase tracking-widest mb-5" style={{ color: 'var(--ink, #1b3a2f)', fontFamily: "'Playfair Display', serif" }}>
+          Estatísticas
+        </h2>
+        <div className="grid grid-cols-2 gap-4">
+          {cards.map((card) => (
             <div
-              className="w-10 h-10 rounded-lg flex items-center justify-center mb-4"
-              style={{ backgroundColor: `${card.cor}18` }}
+              key={card.label}
+              className="rounded-xl flex items-center gap-5"
+              style={{ backgroundColor: 'var(--paper-2, #eae6d4)', border: '1px solid var(--paper-3, #dddac8)', padding: '20px 24px' }}
             >
-              <card.icon size={20} color={card.cor} />
+              <div
+                className="rounded-xl flex-shrink-0 flex items-center justify-center"
+                style={{ backgroundColor: `${card.cor}18`, width: '52px', height: '52px' }}
+              >
+                <card.icon size={26} color={card.cor} />
+              </div>
+              <div>
+                {carregando ? (
+                  <div className="h-8 w-20 rounded animate-pulse mb-1" style={{ backgroundColor: 'var(--paper-3, #dddac8)' }} />
+                ) : (
+                  <p className="font-extrabold leading-none" style={{ fontSize: '28px', color: 'var(--ink, #1b3a2f)', fontFamily: "'Playfair Display', serif" }}>
+                    {card.valor}
+                  </p>
+                )}
+                <p className="font-bold mt-1.5" style={{ fontSize: '13px', color: 'var(--ink, #1b3a2f)', fontFamily: "'Playfair Display', serif" }}>
+                  {card.label}
+                </p>
+              </div>
             </div>
-            {carregando ? (
-              <div className="h-7 w-16 rounded animate-pulse mb-1" style={{ backgroundColor: 'var(--color-green-mid)' }} />
-            ) : (
-              <p className="text-2xl font-extrabold" style={{ color: 'var(--color-white)' }}>
-                {card.valor}
-              </p>
-            )}
-            <p className="text-xs font-light mt-1" style={{ color: 'var(--color-gray-dark)' }}>
-              {card.label}
-            </p>
-          </div>
-        ))}
+          ))}
+        </div>
       </div>
 
       {/* Atalhos rápidos */}
-      <div className="mb-4">
-        <h2 className="text-base font-bold mb-4" style={{ color: 'var(--color-white)' }}>
+      <div
+        className="p-6"
+        style={{ border: '1px solid var(--gold, #c49818)', borderRadius: '12px' }}
+      >
+        <h2 className="text-xs font-bold uppercase tracking-widest mb-5" style={{ color: 'var(--ink, #1b3a2f)', fontFamily: "'Playfair Display', serif" }}>
           Acesso Rápido
         </h2>
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           {atalhos.map((item) => (
             <button
               key={item.href}
               onClick={() => router.push(item.href)}
-              className="flex items-center gap-4 rounded-xl p-5 text-left transition-colors hover:brightness-110"
-              style={{ backgroundColor: 'var(--color-green-mid)' }}
+              className="flex items-center gap-5 rounded-xl text-left transition-colors hover:brightness-105"
+              style={{ backgroundColor: 'var(--paper-2, #eae6d4)', border: '1px solid var(--paper-3, #dddac8)', padding: '20px 24px' }}
             >
               <div
-                className="flex-shrink-0 w-10 h-10 rounded-lg flex items-center justify-center"
-                style={{ backgroundColor: `${item.cor}18` }}
+                className="flex-shrink-0 rounded-xl flex items-center justify-center"
+                style={{ backgroundColor: `${item.cor}18`, width: '52px', height: '52px' }}
               >
-                <item.icon size={20} color={item.cor} />
+                <item.icon size={26} color={item.cor} />
               </div>
               <div>
-                <p className="text-sm font-bold" style={{ color: 'var(--color-white)' }}>
+                <p className="font-bold" style={{ fontSize: '17px', color: 'var(--ink, #1b3a2f)', fontFamily: "'Playfair Display', serif" }}>
                   {item.label}
                 </p>
-                <p className="text-xs font-light mt-0.5" style={{ color: 'var(--color-gray-dark)' }}>
+                <p className="font-bold mt-1" style={{ fontSize: '13px', color: 'var(--ink, #1b3a2f)', fontFamily: "'Playfair Display', serif" }}>
                   {item.desc}
                 </p>
               </div>
@@ -135,6 +149,7 @@ export default function DashboardPage() {
           ))}
         </div>
       </div>
+
     </div>
     </div>
   )

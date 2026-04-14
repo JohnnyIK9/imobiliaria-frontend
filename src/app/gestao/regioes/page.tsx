@@ -467,34 +467,70 @@ export default function RegioesPage() {
 
         {/* Selects estado + cidade — centro do header */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flex: 1, justifyContent: 'center', flexWrap: 'wrap' }}>
-          <Select
-            value={estadoSel}
-            onChange={(v) => {
-              setEstadoSel(v)
-              localStorage.setItem('regioes:estado', v)
-              const filtradas = todasCidadesRef.current.filter((c) => c.estadoId === v)
-              setCidades(filtradas)
-              const primeira = filtradas[0] ?? null
-              setCidadeSel(primeira)
-              if (primeira) localStorage.setItem('regioes:cidadeId', primeira.id.toString())
-              else localStorage.removeItem('regioes:cidadeId')
-            }}
-            placeholder="Selecione o estado"
-            options={estados.map((e) => ({ value: e.id, label: e.nome }))}
-            width="200px"
-          />
-          <Select
-            value={cidadeSel?.id.toString() ?? ''}
-            onChange={(v) => {
-              const c = cidades.find((c) => c.id.toString() === v) ?? null
-              setCidadeSel(c)
-              if (c) localStorage.setItem('regioes:cidadeId', c.id.toString())
-            }}
-            placeholder="Selecione a cidade"
-            options={cidades.map((c) => ({ value: c.id.toString(), label: c.nome }))}
-            disabled={!estadoSel || cidades.length === 0}
-            width="220px"
-          />
+          {/* Estado */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+            <span style={{ color: 'var(--gold, #c49818)', fontSize: '9px', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase' }}>
+              Estado
+            </span>
+            <div style={{ position: 'relative' }}>
+              <select
+                value={estadoSel}
+                onChange={(e) => {
+                  const v = e.target.value
+                  setEstadoSel(v)
+                  localStorage.setItem('regioes:estado', v)
+                  const filtradas = todasCidadesRef.current.filter((c) => c.estadoId === v)
+                  setCidades(filtradas)
+                  const primeira = filtradas[0] ?? null
+                  setCidadeSel(primeira)
+                  if (primeira) localStorage.setItem('regioes:cidadeId', primeira.id.toString())
+                  else localStorage.removeItem('regioes:cidadeId')
+                }}
+                style={estiloSelectHeaderRegioes}
+              >
+                {estados.map((e) => (
+                  <option key={e.id} value={e.id} style={{ backgroundColor: '#1b3a2f', color: '#f4f1e6' }}>
+                    {e.nome}
+                  </option>
+                ))}
+              </select>
+              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="var(--gold, #c49818)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"
+                style={{ position: 'absolute', right: '8px', top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none' }}>
+                <polyline points="6 9 12 15 18 9" />
+              </svg>
+            </div>
+          </div>
+
+          <span style={{ color: 'rgba(255,255,255,0.3)', fontSize: '18px', marginTop: '10px' }}>›</span>
+
+          {/* Cidade */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+            <span style={{ color: 'var(--gold, #c49818)', fontSize: '9px', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase' }}>
+              Cidade
+            </span>
+            <div style={{ position: 'relative' }}>
+              <select
+                value={cidadeSel?.id.toString() ?? ''}
+                onChange={(e) => {
+                  const c = cidades.find((c) => c.id.toString() === e.target.value) ?? null
+                  setCidadeSel(c)
+                  if (c) localStorage.setItem('regioes:cidadeId', c.id.toString())
+                }}
+                disabled={!estadoSel || cidades.length === 0}
+                style={{ ...estiloSelectHeaderRegioes, width: '200px' }}
+              >
+                {cidades.map((c) => (
+                  <option key={c.id} value={c.id} style={{ backgroundColor: '#1b3a2f', color: '#f4f1e6' }}>
+                    {c.nome}
+                  </option>
+                ))}
+              </select>
+              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="var(--gold, #c49818)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"
+                style={{ position: 'absolute', right: '8px', top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none' }}>
+                <polyline points="6 9 12 15 18 9" />
+              </svg>
+            </div>
+          </div>
           <button
             onClick={() => setModalCidade(true)}
             style={{
@@ -507,6 +543,7 @@ export default function RegioesPage() {
               fontWeight: 700,
               cursor: 'pointer',
               whiteSpace: 'nowrap',
+              marginTop: '16px',
             }}
           >
             + Cadastrar cidade
@@ -524,6 +561,7 @@ export default function RegioesPage() {
                 fontWeight: 700,
                 cursor: 'pointer',
                 whiteSpace: 'nowrap',
+                marginTop: '16px',
               }}
             >
               ✎ Editar cidade
@@ -1203,48 +1241,20 @@ function Campo({
   )
 }
 
-function Select({
-  value,
-  onChange,
-  options,
-  placeholder,
-  disabled,
-  width,
-}: {
-  value: string
-  onChange: (v: string) => void
-  options: { value: string; label: string }[]
-  placeholder?: string
-  disabled?: boolean
-  width?: string
-}) {
-  return (
-    <select
-      value={value}
-      onChange={(e) => onChange(e.target.value)}
-      disabled={disabled}
-      style={{
-        backgroundColor: 'rgba(255,255,255,0.08)',
-        color: value ? '#ffffff' : 'rgba(255,255,255,0.4)',
-        border: '1px solid rgba(255,255,255,0.2)',
-        borderRadius: '8px',
-        padding: '8px 12px',
-        fontSize: '13px',
-        fontWeight: 700,
-        outline: 'none',
-        cursor: disabled ? 'not-allowed' : 'pointer',
-        opacity: disabled ? 0.4 : 1,
-        width: width ?? 'auto',
-      }}
-    >
-      <option value="" disabled hidden>{placeholder}</option>
-      {options.map((o) => (
-        <option key={o.value} value={o.value} style={{ color: '#fff', backgroundColor: '#1b3a2f' }}>
-          {o.label}
-        </option>
-      ))}
-    </select>
-  )
+
+const estiloSelectHeaderRegioes: React.CSSProperties = {
+  backgroundColor: 'transparent',
+  color: '#ffffff',
+  border: '1.5px solid var(--gold, #c49818)',
+  borderRadius: '0',
+  padding: '5px 28px 5px 10px',
+  fontSize: '12px',
+  fontWeight: 700,
+  outline: 'none',
+  cursor: 'pointer',
+  width: '120px',
+  appearance: 'none',
+  WebkitAppearance: 'none',
 }
 
 const estiloInputModal: React.CSSProperties = {

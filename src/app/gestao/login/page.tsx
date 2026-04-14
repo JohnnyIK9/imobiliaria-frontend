@@ -34,7 +34,7 @@ export default function LoginPage() {
       const res = await loginApi(email, senha)
 
       if (res.ok) {
-        router.push('/')
+        router.push('/gestao')
         return
       }
 
@@ -57,40 +57,43 @@ export default function LoginPage() {
   const bloqueado = segundosRestantes > 0
 
   return (
-    <div className="min-h-screen flex items-center justify-center px-4" style={{ backgroundColor: 'var(--color-black)' }}>
+    <div className="min-h-screen flex items-center justify-center px-4" style={{ backgroundColor: 'var(--color-black)', fontFamily: "'IM Fell English', serif" }}>
       <div className="w-full max-w-sm">
-        {/* Logo / Nome */}
-        <div className="text-center mb-10">
-          <div
-            className="inline-flex items-center justify-center w-14 h-14 rounded-xl mb-4"
-            style={{ backgroundColor: 'var(--color-green-dark)' }}
-          >
-            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#40A6F4" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
-              <polyline points="9 22 9 12 15 12 15 22" />
-            </svg>
-          </div>
-          <h1 className="text-2xl font-extrabold" style={{ color: 'var(--color-white)' }}>
-            Imobiliária do Professor
-          </h1>
-          <p className="mt-1 text-sm font-light" style={{ color: 'var(--color-gray-dark)' }}>
-            Painel Administrativo
-          </p>
-        </div>
-
         {/* Card do formulário */}
         <div
-          className="rounded-2xl p-8"
-          style={{ backgroundColor: 'var(--color-green-dark)' }}
+          className="p-8"
+          style={{ backgroundColor: 'var(--paper, #f4f1e6)', borderTop: '3px solid var(--gold, #c49818)' }}
         >
-          <h2 className="text-lg font-bold mb-6" style={{ color: 'var(--color-white)' }}>
-            Entrar na sua conta
-          </h2>
+        {/* Logo / Nome */}
+        <div className="text-center mb-8">
+          <div style={{
+            display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+            backgroundColor: 'var(--ink, #1b3a2f)',
+            border: '1px solid var(--gold, #c49818)',
+            padding: '6px 32px',
+            marginBottom: '16px',
+          }}>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/svg/white-02.svg" alt="Logo" style={{ width: '64px', height: '64px', objectFit: 'contain' }} />
+          </div>
+          <p style={{ fontSize: '11px', fontWeight: 600, letterSpacing: '0.18em', textTransform: 'uppercase', color: 'var(--sepia, #7a9e88)', marginBottom: '4px', fontFamily: "'DM Sans', sans-serif" }}>
+            Área Administrativa
+          </p>
+          <h1 style={{ fontSize: '28px', fontWeight: 800, lineHeight: 1.1, fontFamily: "'Playfair Display', serif", margin: 0 }}>
+            <span style={{ color: 'var(--ink, #1b3a2f)' }}>do </span>
+            <span style={{ color: 'var(--gold, #c49818)', fontStyle: 'italic' }}>Professor</span>
+          </h1>
+        </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', margin: '0 0 20px' }}>
+            <div style={{ flex: 1, height: '1px', backgroundColor: 'var(--paper-3, #dddac8)' }} />
+            <span style={{ color: 'var(--gold, #c49818)', fontSize: '10px' }}>◆</span>
+            <div style={{ flex: 1, height: '1px', backgroundColor: 'var(--paper-3, #dddac8)' }} />
+          </div>
 
           <form onSubmit={handleSubmit} className="space-y-4">
             {/* E-mail */}
             <div>
-              <label className="block text-sm font-bold mb-1.5" style={{ color: 'var(--color-white)' }}>
+              <label className="block text-sm font-bold mb-1.5" style={{ color: 'var(--ink, #1b3a2f)' }}>
                 E-mail
               </label>
               <input
@@ -101,18 +104,18 @@ export default function LoginPage() {
                 placeholder="admin@imobiliaria.com"
                 className="w-full rounded-lg px-4 py-2.5 text-sm outline-none transition-all placeholder:font-light"
                 style={{
-                  backgroundColor: 'var(--color-green-mid)',
-                  color: 'var(--color-white)',
-                  border: '1px solid transparent',
+                  backgroundColor: 'var(--paper-2, #eae6d4)',
+                  color: 'var(--ink, #1b3a2f)',
+                  border: '1px solid var(--paper-3, #dddac8)',
                 }}
-                onFocus={(e) => (e.currentTarget.style.borderColor = 'var(--color-blue)')}
+                onFocus={(e) => (e.currentTarget.style.borderColor = 'var(--gold, #c49818)')}
                 onBlur={(e) => (e.currentTarget.style.borderColor = 'transparent')}
               />
             </div>
 
             {/* Senha */}
             <div>
-              <label className="block text-sm font-bold mb-1.5" style={{ color: 'var(--color-white)' }}>
+              <label className="block text-sm font-bold mb-1.5" style={{ color: 'var(--ink, #1b3a2f)' }}>
                 Senha
               </label>
               <input
@@ -123,11 +126,11 @@ export default function LoginPage() {
                 placeholder="••••••••"
                 className="w-full rounded-lg px-4 py-2.5 text-sm outline-none transition-all placeholder:font-light"
                 style={{
-                  backgroundColor: 'var(--color-green-mid)',
-                  color: 'var(--color-white)',
-                  border: '1px solid transparent',
+                  backgroundColor: 'var(--paper-2, #eae6d4)',
+                  color: 'var(--ink, #1b3a2f)',
+                  border: '1px solid var(--paper-3, #dddac8)',
                 }}
-                onFocus={(e) => (e.currentTarget.style.borderColor = 'var(--color-blue)')}
+                onFocus={(e) => (e.currentTarget.style.borderColor = 'var(--gold, #c49818)')}
                 onBlur={(e) => (e.currentTarget.style.borderColor = 'transparent')}
               />
             </div>
@@ -148,29 +151,40 @@ export default function LoginPage() {
             <button
               type="submit"
               disabled={carregando || bloqueado}
-              className="w-full rounded-lg py-2.5 text-sm font-bold transition-opacity mt-2"
+              className="w-full py-2.5 text-sm font-bold mt-2"
               style={{
-                backgroundColor: 'var(--color-blue)',
-                color: 'var(--color-white)',
+                backgroundColor: 'var(--ink, #1b3a2f)',
+                color: 'var(--gold, #c49818)',
+                border: '1px solid var(--gold, #c49818)',
                 opacity: carregando || bloqueado ? 0.5 : 1,
                 cursor: carregando || bloqueado ? 'not-allowed' : 'pointer',
+                transition: 'background-color 0.2s, color 0.2s',
+              }}
+              onMouseEnter={(e) => {
+                if (carregando || bloqueado) return
+                e.currentTarget.style.backgroundColor = 'var(--gold, #c49818)'
+                e.currentTarget.style.color = 'var(--ink, #1b3a2f)'
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.backgroundColor = 'var(--ink, #1b3a2f)'
+                e.currentTarget.style.color = 'var(--gold, #c49818)'
               }}
             >
               {carregando ? 'Entrando...' : bloqueado ? `Aguarde ${formatarContagem(segundosRestantes)}` : 'Entrar'}
             </button>
           </form>
-        </div>
 
-        {/* Link de volta ao site */}
-        <p className="text-center mt-6 text-sm font-light" style={{ color: 'var(--color-gray-dark)' }}>
-          <a
-            href="/"
-            className="hover:underline transition-colors"
-            style={{ color: 'var(--color-blue)' }}
-          >
-            ← Voltar ao site
-          </a>
-        </p>
+          {/* Link de volta ao site */}
+          <p className="text-center mt-6 text-sm font-light">
+            <a
+              href="/"
+              className="hover:underline transition-colors"
+              style={{ color: 'var(--sepia, #7a9e88)' }}
+            >
+              ← Voltar ao site
+            </a>
+          </p>
+        </div>
       </div>
     </div>
   )

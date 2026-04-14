@@ -16,7 +16,9 @@ import {
 } from '@/lib/api'
 
 // ── Tipos ──────────────────────────────────────────────────
-type Cidade = { id: number; nome: string }
+type Estado = { id: string; nome: string }
+type CidadeRaw = { id: number; nome: string; estado?: { id: string; nome: string }; estadoId?: string }
+type Cidade = { id: number; nome: string; estadoId: string }
 type Regiao = { id: number; nome: string }
 
 type Imovel = {
@@ -35,6 +37,7 @@ type Imovel = {
   vagas: number
   endereco: string
   descricao: string | null
+  fotoCapaSrc: string | null
 }
 
 type Foto = {
@@ -89,10 +92,7 @@ function formatarPreco(v: number) {
 function lerArquivoBase64(arquivo: File): Promise<string> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader()
-    reader.onload = () => {
-      const result = reader.result as string
-      resolve(result.split(',')[1])
-    }
+    reader.onload = () => { resolve((reader.result as string).split(',')[1]) }
     reader.onerror = reject
     reader.readAsDataURL(arquivo)
   })
@@ -106,7 +106,14 @@ function corStatus(status: string) {
   if (status === 'ativo') return '#4ADE80'
   if (status === 'pausado') return '#FACC15'
   if (status === 'agendado') return '#FB923C'
-  return 'rgba(255,255,255,0.3)'
+  return 'rgba(0,0,0,0.2)'
+}
+
+function labelStatus(status: string) {
+  if (status === 'ativo') return 'Ativo'
+  if (status === 'pausado') return 'Pausado'
+  if (status === 'agendado') return 'Agendado'
+  return 'Inativo'
 }
 
 function getYoutubeId(url: string) {
@@ -138,6 +145,10 @@ function normalizarVideo(raw: Record<string, unknown>): Video {
 }
 
 function normalizarImovel(raw: Record<string, unknown>): Imovel {
+  const fotoCapa = raw.fotoCapa as Record<string, unknown> | null
+  const fotoCapaSrc = fotoCapa?.dadosBase64
+    ? `data:${fotoCapa.mimeType};base64,${fotoCapa.dadosBase64}`
+    : null
   return {
     id: raw.id as number,
     codigo: (raw.codigo ?? raw.code ?? String(raw.id)) as string,
@@ -145,7 +156,7 @@ function normalizarImovel(raw: Record<string, unknown>): Imovel {
     publicarEm: (raw.publicarEm ?? raw.publicar_em ?? null) as string | null,
     cidadeId: (raw.cidadeId ?? raw.cidade_id ?? 0) as number,
     regiaoId: (raw.regiaoId ?? raw.regiao_id ?? null) as number | null,
-    regiaoNome: (raw.regiaoNome ?? raw.regiao_nome ?? raw.regiao?.nome ?? '') as string,
+    regiaoNome: (raw.regiaoNome ?? raw.regiao_nome ?? (raw.regiao as Record<string, unknown>)?.nome ?? '') as string,
     tipo: (raw.tipo ?? '') as string,
     preco: (raw.preco ?? 0) as number,
     quartos: (raw.quartos ?? 0) as number,
@@ -154,19 +165,21 @@ function normalizarImovel(raw: Record<string, unknown>): Imovel {
     vagas: (raw.vagas ?? 0) as number,
     endereco: (raw.endereco ?? '') as string,
     descricao: (raw.descricao ?? null) as string | null,
+    fotoCapaSrc,
   }
 }
 
 // ── Componente principal ───────────────────────────────────
 export default function ImoveisPage() {
-  // Filtros coluna 1
-  const [filtroCidadeId, setFiltroCidadeId] = useState('')
-  const [filtroRegiaoId, setFiltroRegiaoId] = useState('')
-  const [filtroCidades, setFiltroCidades] = useState<Cidade[]>([])
-  const [filtroRegioes, setFiltroRegioes] = useState<Regiao[]>([])
-  const [busca, setBusca] = useState('')
+  // Header — Estado → Cidade
+  const [estados, setEstados] = useState<Estado[]>([])
+  const [estadoSel, setEstadoSel] = useState('')
+  const [todasCidades, setTodasCidades] = useState<Cidade[]>([])
+  const [cidadesFiltradas, setCidadesFiltradas] = useState<Cidade[]>([])
+  const [cidadeSel, setCidadeSel] = useState<Cidade | null>(null)
 
   // Lista
+  const [busca, setBusca] = useState('')
   const [imoveis, setImoveis] = useState<Imovel[]>([])
   const [carregandoLista, setCarregandoLista] = useState(false)
 
@@ -176,7 +189,7 @@ export default function ImoveisPage() {
   // Mídias
   const [fotos, setFotos] = useState<Foto[]>([])
   const [videos, setVideos] = useState<Video[]>([])
-  const [fotoIdx, setFotoIdx] = useState(0)
+  const [midiaIdx, setMidiaIdx] = useState(0)
   const [carregandoMidias, setCarregandoMidias] = useState(false)
   const [adicionandoFoto, setAdicionandoFoto] = useState(false)
   const [adicionandoVideo, setAdicionandoVideo] = useState(false)
@@ -184,14 +197,14 @@ export default function ImoveisPage() {
   const [erroVideo, setErroVideo] = useState('')
   const fotoInputRef = useRef<HTMLInputElement>(null)
 
-  // Formulário coluna 3
+  // Formulário
   const [form, setForm] = useState<FormState>(FORM_VAZIO)
   const [modoNovo, setModoNovo] = useState(false)
   const [salvando, setSalvando] = useState(false)
   const [confirmandoExclusao, setConfirmandoExclusao] = useState(false)
   const [excluindo, setExcluindo] = useState(false)
 
-  // Selects formulário
+  // Selects do formulário
   const [formCidades, setFormCidades] = useState<Cidade[]>([])
   const [formRegioes, setFormRegioes] = useState<Regiao[]>([])
 
@@ -202,37 +215,43 @@ export default function ImoveisPage() {
   // ── Init ──────────────────────────────────────────────────
   useEffect(() => {
     async function init() {
-      const [rCidades] = await Promise.all([getCidadesApi()])
-      if (rCidades.ok) {
-        const lista: Cidade[] = await rCidades.json()
-        setFiltroCidades(lista)
-        setFormCidades(lista)
+      const r = await getCidadesApi()
+      if (!r.ok) return
+      const raw: CidadeRaw[] = await r.json()
+      const lista: Cidade[] = raw.map((c) => ({
+        id: c.id,
+        nome: c.nome,
+        estadoId: c.estado?.id ?? c.estadoId ?? '',
+      }))
+      setTodasCidades(lista)
+      setFormCidades(lista)
+
+      // Derivar estados únicos
+      const estadosMap = new Map<string, Estado>()
+      lista.forEach((c) => {
+        if (c.estadoId) estadosMap.set(c.estadoId, { id: c.estadoId, nome: c.estadoId })
+      })
+      const listaEstados = Array.from(estadosMap.values()).sort((a, b) => a.id.localeCompare(b.id))
+      setEstados(listaEstados)
+
+      // Auto-seleciona primeiro estado e primeira cidade
+      if (listaEstados.length > 0) {
+        const primEst = listaEstados[0]
+        setEstadoSel(primEst.id)
+        const cidades = lista.filter((c) => c.estadoId === primEst.id)
+        setCidadesFiltradas(cidades)
+        if (cidades.length > 0) {
+          const primCid = cidades[0]
+          setCidadeSel(primCid)
+          await carregarImoveis({ cidadeId: primCid.id })
+        }
       }
-      await carregarImoveis()
     }
     init()
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  // Filtro cidade → carrega regiões e refiltra lista
-  useEffect(() => {
-    setFiltroRegiaoId('')
-    setFiltroRegioes([])
-    carregarImoveis(filtroCidadeId ? { cidadeId: Number(filtroCidadeId) } : undefined)
-    if (!filtroCidadeId) return
-    getRegioesPorCidadeApi(Number(filtroCidadeId)).then(async (r) => {
-      if (r.ok) setFiltroRegioes(await r.json())
-    })
-  }, [filtroCidadeId])
-
-  // Filtro região → refiltra lista
-  useEffect(() => {
-    if (filtroCidadeId === '') return
-    const params: { cidadeId?: number; regiaoId?: number } = { cidadeId: Number(filtroCidadeId) }
-    if (filtroRegiaoId) params.regiaoId = Number(filtroRegiaoId)
-    carregarImoveis(params)
-  }, [filtroRegiaoId])
-
-  // Cidade no formulário → carrega regiões do formulário
+  // Cidade no formulário → carrega regiões do form
   useEffect(() => {
     setForm((f) => ({ ...f, regiaoId: '' }))
     setFormRegioes([])
@@ -240,10 +259,32 @@ export default function ImoveisPage() {
     getRegioesPorCidadeApi(Number(form.cidadeId)).then(async (r) => {
       if (r.ok) setFormRegioes(await r.json())
     })
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [form.cidadeId])
 
+  // ── Header handlers ───────────────────────────────────────
+  function handleEstadoChange(estadoId: string) {
+    setEstadoSel(estadoId)
+    const cidades = todasCidades.filter((c) => c.estadoId === estadoId)
+    setCidadesFiltradas(cidades)
+    const primeira = cidades[0] ?? null
+    setCidadeSel(primeira)
+    if (primeira) {
+      carregarImoveis({ cidadeId: primeira.id })
+    } else {
+      setImoveis([])
+    }
+  }
+
+  function handleCidadeChange(cidadeId: string) {
+    const cidade = cidadesFiltradas.find((c) => c.id === Number(cidadeId)) ?? null
+    setCidadeSel(cidade)
+    if (cidade) carregarImoveis({ cidadeId: cidade.id })
+    else setImoveis([])
+  }
+
   // ── API ───────────────────────────────────────────────────
-  async function carregarImoveis(params?: { cidadeId?: number; regiaoId?: number }) {
+  async function carregarImoveis(params?: { cidadeId?: number }) {
     setCarregandoLista(true)
     setImoveis([])
     try {
@@ -261,15 +302,13 @@ export default function ImoveisPage() {
     setCarregandoMidias(true)
     setFotos([])
     setVideos([])
-    setFotoIdx(0)
+    setMidiaIdx(0)
     try {
       const res = await getMidiasImovelApi(id)
       if (res.ok) {
         const data = await res.json()
-        const fotosRaw: Record<string, unknown>[] = data.fotos ?? []
-        const videosRaw: Record<string, unknown>[] = data.videos ?? []
-        setFotos(fotosRaw.map(normalizarFoto))
-        setVideos(videosRaw.map(normalizarVideo))
+        setFotos((data.fotos ?? []).map(normalizarFoto))
+        setVideos((data.videos ?? []).map(normalizarVideo))
       }
     } finally {
       setCarregandoMidias(false)
@@ -311,10 +350,10 @@ export default function ImoveisPage() {
   function novoImovel() {
     setImovelSel(null)
     setModoNovo(true)
-    setForm(FORM_VAZIO)
+    setForm({ ...FORM_VAZIO, cidadeId: cidadeSel ? String(cidadeSel.id) : '' })
     setFotos([])
     setVideos([])
-    setFotoIdx(0)
+    setMidiaIdx(0)
     setConfirmandoExclusao(false)
     if (toast) setToast(null)
   }
@@ -353,24 +392,14 @@ export default function ImoveisPage() {
         descricao: form.descricao.trim() || null,
       }
 
-      let res: Response
-      if (modoNovo) {
-        res = await criarImovelApi(payload)
-      } else {
-        res = await editarImovelApi(imovelSel!.id, payload)
-      }
+      const res = modoNovo
+        ? await criarImovelApi(payload)
+        : await editarImovelApi(imovelSel!.id, payload)
 
       if (res.ok) {
         const data = await res.json()
         exibirToast(modoNovo ? 'Imóvel criado com sucesso!' : 'Imóvel atualizado!', 'sucesso')
-
-        // Recarrega lista
-        const params: { cidadeId?: number; regiaoId?: number } = {}
-        if (filtroCidadeId) params.cidadeId = Number(filtroCidadeId)
-        if (filtroRegiaoId) params.regiaoId = Number(filtroRegiaoId)
-        await carregarImoveis(Object.keys(params).length ? params : undefined)
-
-        // Seleciona o imóvel criado/editado
+        await carregarImoveis(cidadeSel ? { cidadeId: cidadeSel.id } : undefined)
         const idAlvo = modoNovo ? (data.id as number) : imovelSel!.id
         setModoNovo(false)
         setImoveis((prev) => {
@@ -425,7 +454,7 @@ export default function ImoveisPage() {
         setFotos([])
         setVideos([])
         setConfirmandoExclusao(false)
-        await carregarImoveis()
+        await carregarImoveis(cidadeSel ? { cidadeId: cidadeSel.id } : undefined)
       } else {
         const err = await res.json().catch(() => null)
         exibirToast(err?.message ?? 'Erro ao excluir.', 'erro')
@@ -445,11 +474,11 @@ export default function ImoveisPage() {
     e.target.value = ''
     const permitidos = arquivos.filter((f) => {
       if (!['image/jpeg', 'image/png', 'image/webp'].includes(f.type)) {
-        exibirToast(`Arquivo "${f.name}" não permitido. Use JPG, PNG ou WebP.`, 'erro')
+        exibirToast(`"${f.name}" não permitido. Use JPG, PNG ou WebP.`, 'erro')
         return false
       }
       if (f.size > 2 * 1024 * 1024) {
-        exibirToast(`Arquivo "${f.name}" excede 2MB.`, 'erro')
+        exibirToast(`"${f.name}" excede 2MB.`, 'erro')
         return false
       }
       return true
@@ -480,17 +509,13 @@ export default function ImoveisPage() {
 
   async function handleExcluirFoto(foto: Foto) {
     if (!imovelSel) return
-    try {
-      const res = await excluirFotoApi(foto.id)
-      if (res.ok) {
-        await carregarMidias(imovelSel.id)
-        setFotoIdx((idx) => Math.max(0, idx - 1))
-        exibirToast('Foto excluída.', 'sucesso')
-      } else {
-        exibirToast('Erro ao excluir foto.', 'erro')
-      }
-    } catch {
-      exibirToast('Erro de conexão.', 'erro')
+    const res = await excluirFotoApi(foto.id)
+    if (res.ok) {
+      await carregarMidias(imovelSel.id)
+      setMidiaIdx((i) => Math.max(0, i - 1))
+      exibirToast('Foto excluída.', 'sucesso')
+    } else {
+      exibirToast('Erro ao excluir foto.', 'erro')
     }
   }
 
@@ -521,34 +546,47 @@ export default function ImoveisPage() {
 
   async function handleExcluirVideo(video: Video) {
     if (!imovelSel) return
-    try {
-      const res = await excluirVideoApi(video.id)
-      if (res.ok) {
-        await carregarMidias(imovelSel.id)
-        exibirToast('Vídeo excluído.', 'sucesso')
-      } else {
-        exibirToast('Erro ao excluir vídeo.', 'erro')
-      }
-    } catch {
-      exibirToast('Erro de conexão.', 'erro')
+    const res = await excluirVideoApi(video.id)
+    if (res.ok) {
+      await carregarMidias(imovelSel.id)
+      exibirToast('Vídeo excluído.', 'sucesso')
+    } else {
+      exibirToast('Erro ao excluir vídeo.', 'erro')
     }
   }
 
-  // ── Lista filtrada (client-side) ──────────────────────────
+  // ── Lista filtrada ────────────────────────────────────────
   const imoveisFiltrados = imoveis.filter((im) => {
     if (!busca.trim()) return true
     const q = busca.toLowerCase()
     return (
       im.codigo.toLowerCase().includes(q) ||
       im.tipo.toLowerCase().includes(q) ||
-      (im.regiaoNome ?? '').toLowerCase().includes(q)
+      (im.regiaoNome ?? '').toLowerCase().includes(q) ||
+      im.endereco.toLowerCase().includes(q)
     )
   })
 
+  // ── Mídias unificadas ─────────────────────────────────────
+  const midias: ({ tipo: 'foto' } & Foto | { tipo: 'video' } & Video)[] = [
+    ...fotos.map((f) => ({ tipo: 'foto' as const, ...f })),
+    ...videos.map((v) => ({ tipo: 'video' as const, ...v })),
+  ]
+  const totalMidias = midias.length
+  const midiaAtual = midias[midiaIdx]
+
   // ── Render ────────────────────────────────────────────────
   return (
-    <div style={{ display: 'flex', height: '100%', overflow: 'hidden', fontFamily: "'DM Sans', sans-serif" }}>
-      {/* Toast */}
+    <div
+      style={{
+        display: 'flex',
+        flexDirection: 'column',
+        height: '100%',
+        overflow: 'hidden',
+        fontFamily: "'DM Sans', sans-serif",
+      }}
+    >
+      {/* ── Toast ── */}
       {toast && (
         <div
           style={{
@@ -563,7 +601,7 @@ export default function ImoveisPage() {
             borderRadius: '12px',
             fontSize: '13px',
             fontWeight: 700,
-            boxShadow: '0 4px 24px rgba(0,0,0,0.4)',
+            boxShadow: '0 4px 24px rgba(0,0,0,0.25)',
             backgroundColor:
               toast.tipo === 'sucesso' ? '#14532d' :
               toast.tipo === 'confirm' ? '#1e293b' : '#3B1F1F',
@@ -600,14 +638,7 @@ export default function ImoveisPage() {
           {toast.tipo === 'confirm' && (
             <button
               onClick={() => { setToast(null); setConfirmandoExclusao(false) }}
-              style={{
-                background: 'none',
-                border: 'none',
-                color: 'rgba(255,255,255,0.4)',
-                fontSize: '14px',
-                cursor: 'pointer',
-                padding: '0 2px',
-              }}
+              style={{ background: 'none', border: 'none', color: 'rgba(255,255,255,0.4)', fontSize: '14px', cursor: 'pointer', padding: '0 2px' }}
             >
               ✕
             </button>
@@ -615,237 +646,266 @@ export default function ImoveisPage() {
         </div>
       )}
 
-      {/* ── Coluna 1: Lista ── */}
-      <div
+      {/* ── Header ── */}
+      <header
         style={{
-          width: '240px',
-          flexShrink: 0,
-          height: '100%',
-          backgroundColor: 'var(--paper, #f4f1e6)',
-          borderRight: '1px solid var(--gold, #c49818)',
+          backgroundColor: 'var(--ink, #1b3a2f)',
+          borderBottom: '3px solid var(--gold, #c49818)',
+          padding: '0 24px',
+          height: '64px',
           display: 'flex',
-          flexDirection: 'column',
-          overflow: 'hidden',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          flexShrink: 0,
+          gap: '16px',
         }}
       >
-        {/* Header lista */}
-        <div
+        {/* Logo */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexShrink: 0 }}>
+          <div style={{ border: '1px solid var(--gold, #c49818)', padding: '0 14px', display: 'flex', alignItems: 'center', height: '48px' }}>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/svg/white-02.svg" alt="Logo" style={{ width: '40px', height: '40px', objectFit: 'contain' }} />
+          </div>
+          <div style={{ lineHeight: '1.2' }}>
+            <div style={{ fontSize: '11px', fontWeight: 800, color: 'var(--gold, #c49818)', letterSpacing: '0.08em', textTransform: 'uppercase' }}>Imobiliária</div>
+            <div style={{ fontSize: '18px', fontWeight: 800, lineHeight: '1.1', fontFamily: "'Playfair Display', serif" }}>
+              <span style={{ color: '#ffffff' }}>do </span>
+              <span style={{ color: 'var(--gold, #c49818)', fontStyle: 'italic' }}>Professor</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Estado → Cidade */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+          {/* Estado */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+            <span style={{ color: 'var(--gold, #c49818)', fontSize: '9px', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase' }}>
+              Estado
+            </span>
+            <div style={{ position: 'relative' }}>
+              <select
+                value={estadoSel}
+                onChange={(e) => handleEstadoChange(e.target.value)}
+                style={estiloSelectHeader}
+              >
+                {estados.map((est) => (
+                  <option key={est.id} value={est.id} style={{ backgroundColor: '#1b3a2f', color: '#f4f1e6' }}>
+                    {est.id}
+                  </option>
+                ))}
+              </select>
+              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="var(--gold, #c49818)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"
+                style={{ position: 'absolute', right: '8px', top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none' }}>
+                <polyline points="6 9 12 15 18 9" />
+              </svg>
+            </div>
+          </div>
+
+          <span style={{ color: 'rgba(255,255,255,0.3)', fontSize: '18px', marginTop: '10px' }}>›</span>
+
+          {/* Cidade */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+            <span style={{ color: 'var(--gold, #c49818)', fontSize: '9px', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase' }}>
+              Cidade
+            </span>
+            <div style={{ position: 'relative' }}>
+              <select
+                value={cidadeSel?.id ?? ''}
+                onChange={(e) => handleCidadeChange(e.target.value)}
+                style={{ ...estiloSelectHeader, width: '200px' }}
+              >
+                {cidadesFiltradas.map((c) => (
+                  <option key={c.id} value={c.id} style={{ backgroundColor: '#1b3a2f', color: '#f4f1e6' }}>
+                    {c.nome}
+                  </option>
+                ))}
+              </select>
+              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="var(--gold, #c49818)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"
+                style={{ position: 'absolute', right: '8px', top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none' }}>
+                <polyline points="6 9 12 15 18 9" />
+              </svg>
+            </div>
+          </div>
+        </div>
+
+        {/* Botão novo */}
+        <button
+          onClick={novoImovel}
           style={{
-            padding: '12px 14px',
-            borderBottom: '1px solid var(--paper-3, #dddac8)',
+            backgroundColor: 'var(--gold, #c49818)',
+            color: 'var(--ink, #1b3a2f)',
+            border: 'none',
+            borderRadius: '8px',
+            padding: '10px 22px',
+            fontSize: '13px',
+            fontWeight: 800,
+            cursor: 'pointer',
             flexShrink: 0,
+            whiteSpace: 'nowrap',
           }}
         >
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '10px' }}>
-            <span style={{ color: 'var(--ink, #1b3a2f)', fontSize: '14px', fontWeight: 800 }}>Imóveis</span>
-            <button
-              onClick={novoImovel}
-              style={{
-                backgroundColor: 'var(--ink, #1b3a2f)',
-                color: 'var(--gold, #c49818)',
-                border: '1px solid var(--gold, #c49818)',
-                borderRadius: '7px',
-                padding: '5px 10px',
-                fontSize: '12px',
-                fontWeight: 700,
-                cursor: 'pointer',
-                whiteSpace: 'nowrap',
-              }}
-            >
-              + Novo
-            </button>
-          </div>
+          + Novo imóvel
+        </button>
+      </header>
 
+      {/* ── Corpo ── */}
+      <div style={{ flex: 1, display: 'flex', overflow: 'hidden' }}>
+
+        {/* ── Painel lateral (lista) ── */}
+        <div
+          style={{
+            width: '390px',
+            flexShrink: 0,
+            height: '100%',
+            backgroundColor: 'var(--paper, #f4f1e6)',
+            borderRight: '2px solid var(--gold, #c49818)',
+            display: 'flex',
+            flexDirection: 'column',
+            overflow: 'hidden',
+          }}
+        >
           {/* Busca */}
-          <input
-            type="text"
-            placeholder="Buscar código, tipo..."
-            value={busca}
-            onChange={(e) => setBusca(e.target.value)}
-            style={{
-              width: '100%',
-              boxSizing: 'border-box',
-              backgroundColor: 'var(--paper-2, #eae6d4)',
-              color: 'var(--ink, #1b3a2f)',
-              border: '1px solid var(--paper-3, #dddac8)',
-              borderRadius: '7px',
-              padding: '7px 10px',
-              fontSize: '12px',
-              outline: 'none',
-              marginBottom: '8px',
-            }}
-          />
-
-          {/* Filtro cidade */}
-          <select
-            value={filtroCidadeId}
-            onChange={(e) => setFiltroCidadeId(e.target.value)}
-            style={estiloSelectFiltro(!!filtroCidadeId)}
-          >
-            <option value="">Todas as cidades</option>
-            {filtroCidades.map((c) => (
-              <option key={c.id} value={String(c.id)} style={estiloOption}>
-                {c.nome}
-              </option>
-            ))}
-          </select>
-
-          {/* Filtro região */}
-          <select
-            value={filtroRegiaoId}
-            onChange={(e) => setFiltroRegiaoId(e.target.value)}
-            disabled={!filtroCidadeId}
-            style={{ ...estiloSelectFiltro(!!filtroRegiaoId), marginTop: '6px', opacity: filtroCidadeId ? 1 : 0.4 }}
-          >
-            <option value="">Todas as regiões</option>
-            {filtroRegioes.map((r) => (
-              <option key={r.id} value={String(r.id)} style={estiloOption}>
-                {r.nome}
-              </option>
-            ))}
-          </select>
-
-          <button
-            onClick={() => {
-              const params: { cidadeId?: number; regiaoId?: number } = {}
-              if (filtroCidadeId) params.cidadeId = Number(filtroCidadeId)
-              if (filtroRegiaoId) params.regiaoId = Number(filtroRegiaoId)
-              carregarImoveis(Object.keys(params).length ? params : undefined)
-            }}
-            style={{
-              marginTop: '8px',
-              width: '100%',
-              padding: '7px',
-              borderRadius: '7px',
-              border: '1px solid var(--gold, #c49818)',
-              backgroundColor: 'var(--ink, #1b3a2f)',
-              color: 'var(--gold, #c49818)',
-              fontSize: '12px',
-              fontWeight: 700,
-              cursor: 'pointer',
-            }}
-          >
-            Buscar
-          </button>
-        </div>
-
-        {/* Lista scrollável */}
-        <div style={{ flex: 1, overflowY: 'auto', padding: '8px 0' }}>
-          {carregandoLista ? (
-            <div style={{ display: 'flex', justifyContent: 'center', padding: '24px' }}>
-              <div style={estiloSpinner} />
+          <div style={{ padding: '12px', borderBottom: '1px solid var(--paper-3, #dddac8)', flexShrink: 0 }}>
+            <div style={{ position: 'relative' }}>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--sepia, #7a9e88)" strokeWidth="2" strokeLinecap="round"
+                style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none' }}>
+                <circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" />
+              </svg>
+              <input
+                type="text"
+                placeholder="Buscar código, tipo, região..."
+                value={busca}
+                onChange={(e) => setBusca(e.target.value)}
+                style={{
+                  width: '100%',
+                  boxSizing: 'border-box',
+                  backgroundColor: 'var(--paper-2, #eae6d4)',
+                  color: 'var(--ink, #1b3a2f)',
+                  border: '1px solid var(--paper-3, #dddac8)',
+                  borderRadius: '8px',
+                  padding: '9px 10px 9px 32px',
+                  fontSize: '13px',
+                  outline: 'none',
+                }}
+              />
             </div>
-          ) : imoveisFiltrados.length === 0 ? (
-            <p style={{ color: 'var(--sepia, #7a9e88)', fontSize: '12px', textAlign: 'center', padding: '24px 12px', margin: 0 }}>
-              Nenhum imóvel encontrado.
-            </p>
-          ) : (
-            imoveisFiltrados.map((im) => {
-              const ativo = imovelSel?.id === im.id
-              return (
-                <div
-                  key={im.id}
-                  onClick={() => selecionarImovel(im)}
-                  style={{
-                    padding: '10px 14px',
-                    cursor: 'pointer',
-                    backgroundColor: ativo ? 'rgba(196,152,24,0.1)' : 'transparent',
-                    borderLeft: `3px solid ${ativo ? '#c49818' : 'transparent'}`,
-                    transition: 'background 0.15s',
-                  }}
-                >
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '7px', marginBottom: '3px' }}>
-                    <span style={{
-                      width: '7px', height: '7px', borderRadius: '50%', flexShrink: 0,
-                      backgroundColor: corStatus(im.status),
-                    }} />
-                    <span style={{ color: 'var(--ink, #1b3a2f)', fontSize: '13px', fontWeight: 800 }}>
-                      {im.codigo}
-                    </span>
-                  </div>
-                  <p style={{ color: 'var(--sepia, #7a9e88)', fontSize: '11px', margin: '0 0 2px 14px' }}>
-                    {im.tipo}{im.regiaoNome ? ` · ${im.regiaoNome}` : ''}
-                  </p>
-                  <p style={{ color: '#c49818', fontSize: '12px', fontWeight: 700, margin: '0 0 0 14px' }}>
-                    {formatarPreco(im.preco)}
-                  </p>
-                </div>
-              )
-            })
-          )}
-        </div>
-      </div>
+          </div>
 
-      {/* ── Coluna 2: Galeria ── */}
-      <div
-        style={{
-          flex: 1,
-          height: '100%',
-          overflow: 'hidden',
-          display: 'flex',
-          flexDirection: 'column',
-          backgroundColor: 'var(--paper-2, #eae6d4)',
-          borderRight: '1px solid var(--gold, #c49818)',
-        }}
-      >
-        {!imovelSel && !modoNovo ? (
-          <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <p style={{ color: 'var(--sepia, #7a9e88)', fontSize: '14px', fontWeight: 300 }}>
-              Selecione um imóvel
-            </p>
+          {/* Contador */}
+          <div
+            style={{
+              padding: '10px 16px',
+              borderBottom: '1px solid var(--paper-3, #dddac8)',
+              flexShrink: 0,
+              display: 'flex',
+              alignItems: 'baseline',
+              justifyContent: 'space-between',
+            }}
+          >
+            <span style={{ color: 'var(--ink, #1b3a2f)', fontSize: '15px', fontWeight: 800, fontFamily: "'Playfair Display', serif" }}>
+              Imóveis
+            </span>
+            <span style={{ color: 'var(--sepia, #7a9e88)', fontSize: '11px' }}>
+              {imoveisFiltrados.length} encontrado{imoveisFiltrados.length !== 1 ? 's' : ''}
+            </span>
           </div>
-        ) : modoNovo ? (
-          <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <p style={{ color: 'var(--sepia, #7a9e88)', fontSize: '13px', textAlign: 'center', padding: '20px' }}>
-              Salve o imóvel primeiro para adicionar mídias
-            </p>
-          </div>
-        ) : (
-          <div style={{ flex: 1, overflowY: 'auto', padding: '16px' }}>
-            {carregandoMidias ? (
+
+          {/* Cards */}
+          <div style={{ flex: 1, overflowY: 'auto', padding: '8px 0' }}>
+            {carregandoLista ? (
               <div style={{ display: 'flex', justifyContent: 'center', padding: '40px' }}>
                 <div style={estiloSpinner} />
               </div>
+            ) : imoveisFiltrados.length === 0 ? (
+              <p style={{ color: 'var(--sepia, #7a9e88)', fontSize: '13px', textAlign: 'center', padding: '40px 16px', margin: 0 }}>
+                Nenhum imóvel encontrado.
+              </p>
             ) : (
-              <>
-                {/* ── Carrossel unificado (fotos + vídeos) ── */}
-                {(() => {
-                  const midias: ({ tipo: 'foto' } & Foto | { tipo: 'video' } & Video)[] = [
-                    ...fotos.map((f) => ({ tipo: 'foto' as const, ...f })),
-                    ...videos.map((v) => ({ tipo: 'video' as const, ...v })),
-                  ]
-                  const total = midias.length
-                  const atual = midias[fotoIdx]
+              imoveisFiltrados.map((im) => (
+                <CardAdmin
+                  key={im.id}
+                  imovel={im}
+                  selecionado={(imovelSel?.id === im.id && !modoNovo) || false}
+                  onClick={() => selecionarImovel(im)}
+                />
+              ))
+            )}
+          </div>
+        </div>
 
-                  return (
-                    <div style={{ marginBottom: '20px' }}>
-                      <p style={estiloSecaoTitulo}>Mídias</p>
+        {/* ── Área principal ── */}
+        <div
+          style={{
+            flex: 1,
+            height: '100%',
+            backgroundColor: 'var(--paper-2, #eae6d4)',
+            display: 'flex',
+            flexDirection: 'column',
+            overflow: 'hidden',
+          }}
+        >
+          {/* Estado vazio */}
+          {!imovelSel && !modoNovo && (
+            <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: '14px' }}>
+              <svg width="52" height="52" viewBox="0 0 24 24" fill="none" stroke="var(--paper-3, #dddac8)" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
+                <polyline points="9 22 9 12 15 12 15 22" />
+              </svg>
+              <p style={{ color: 'var(--sepia, #7a9e88)', fontSize: '14px', margin: 0, fontWeight: 500 }}>
+                Selecione um imóvel ou crie um novo
+              </p>
+            </div>
+          )}
 
-                      {/* Visualizador principal */}
+          {/* Conteúdo (galeria + form) */}
+          {(imovelSel || modoNovo) && (
+            <>
+              {/* ── Galeria (só quando tem imóvel selecionado) ── */}
+              {imovelSel && !modoNovo && (
+                <div
+                  style={{
+                    flexShrink: 0,
+                    borderBottom: '2px solid var(--gold, #c49818)',
+                    backgroundColor: 'var(--paper, #f4f1e6)',
+                  }}
+                >
+                  {carregandoMidias ? (
+                    <div style={{ display: 'flex', justifyContent: 'center', padding: '32px' }}>
+                      <div style={estiloSpinner} />
+                    </div>
+                  ) : (
+                    <div style={{ padding: '16px 20px' }}>
+                      {/* Carrossel principal */}
                       <div
                         style={{
-                          height: '260px',
-                          backgroundColor: '#000',
+                          height: '240px',
+                          backgroundColor: '#111',
                           borderRadius: '10px',
                           position: 'relative',
                           overflow: 'hidden',
-                          marginBottom: '8px',
+                          marginBottom: '10px',
                           display: 'flex',
                           alignItems: 'center',
                           justifyContent: 'center',
                         }}
                       >
-                        {total === 0 ? (
-                          <p style={{ color: 'rgba(0,0,0,0.3)', fontSize: '13px', margin: 0 }}>Nenhuma mídia</p>
-                        ) : atual.tipo === 'foto' ? (
+                        {totalMidias === 0 ? (
+                          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px' }}>
+                            <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.15)" strokeWidth="1.5">
+                              <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
+                              <polyline points="9 22 9 12 15 12 15 22" />
+                            </svg>
+                            <p style={{ color: 'rgba(255,255,255,0.2)', fontSize: '12px', margin: 0 }}>Nenhuma mídia</p>
+                          </div>
+                        ) : midiaAtual.tipo === 'foto' ? (
                           <img
-                            src={`data:${atual.mimeType};base64,${atual.dadosBase64}`}
-                            alt={atual.nomeArquivo}
+                            src={`data:${midiaAtual.mimeType};base64,${midiaAtual.dadosBase64}`}
+                            alt={midiaAtual.nomeArquivo}
                             style={{ maxHeight: '100%', maxWidth: '100%', objectFit: 'contain' }}
                           />
                         ) : (
                           <iframe
-                            src={`https://www.youtube.com/embed/${getYoutubeId(atual.urlYoutube)}`}
+                            src={`https://www.youtube.com/embed/${getYoutubeId(midiaAtual.urlYoutube)}`}
                             style={{ width: '100%', height: '100%', border: 'none' }}
                             allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                             allowFullScreen
@@ -853,53 +913,46 @@ export default function ImoveisPage() {
                         )}
 
                         {/* Navegação */}
-                        {total > 1 && (
+                        {totalMidias > 1 && (
                           <>
-                            <button
-                              onClick={() => setFotoIdx((i) => (i - 1 + total) % total)}
-                              style={estiloNavBtn('left')}
-                            >◀</button>
-                            <button
-                              onClick={() => setFotoIdx((i) => (i + 1) % total)}
-                              style={estiloNavBtn('right')}
-                            >▶</button>
+                            <button onClick={() => setMidiaIdx((i) => (i - 1 + totalMidias) % totalMidias)} style={estiloNavBtn('left')}>◀</button>
+                            <button onClick={() => setMidiaIdx((i) => (i + 1) % totalMidias)} style={estiloNavBtn('right')}>▶</button>
                           </>
                         )}
 
-                        {/* Contador + tipo */}
-                        {total > 0 && (
+                        {/* Contador */}
+                        {totalMidias > 0 && (
                           <div style={{
                             position: 'absolute', bottom: '8px', right: '10px',
                             backgroundColor: 'rgba(0,0,0,0.65)', color: '#fff',
                             fontSize: '11px', fontWeight: 700, padding: '2px 8px', borderRadius: '10px',
-                            display: 'flex', alignItems: 'center', gap: '5px',
                           }}>
-                            {atual.tipo === 'video' && <span style={{ fontSize: '9px', color: '#F87171', fontWeight: 800, letterSpacing: '0.05em' }}>YT</span>}
-                            {fotoIdx + 1} / {total}
+                            {midiaAtual.tipo === 'video' && <span style={{ fontSize: '9px', color: '#F87171', marginRight: '4px' }}>YT</span>}
+                            {midiaIdx + 1} / {totalMidias}
                           </div>
                         )}
 
-                        {/* Botão excluir item atual */}
-                        {total > 0 && (
+                        {/* Excluir mídia atual */}
+                        {totalMidias > 0 && (
                           <button
                             onClick={() => {
-                              if (atual.tipo === 'foto') handleExcluirFoto(atual)
-                              else handleExcluirVideo(atual)
+                              if (midiaAtual.tipo === 'foto') handleExcluirFoto(midiaAtual)
+                              else handleExcluirVideo(midiaAtual)
                             }}
                             style={{
                               position: 'absolute', top: '8px', right: '8px',
                               backgroundColor: 'rgba(239,68,68,0.85)', color: '#fff',
                               border: 'none', borderRadius: '6px',
-                              width: '24px', height: '24px', fontSize: '11px',
+                              width: '26px', height: '26px', fontSize: '11px',
                               cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
                             }}
-                            title="Excluir"
+                            title="Excluir mídia"
                           >✕</button>
                         )}
                       </div>
 
                       {/* Thumbnails */}
-                      {total > 0 && (
+                      {totalMidias > 0 && (
                         <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', marginBottom: '12px' }}>
                           {midias.map((midia, idx) => {
                             const thumbSrc = midia.tipo === 'foto'
@@ -908,30 +961,19 @@ export default function ImoveisPage() {
                             return (
                               <div
                                 key={`${midia.tipo}-${midia.id}`}
-                                onClick={() => setFotoIdx(idx)}
+                                onClick={() => setMidiaIdx(idx)}
                                 style={{
-                                  position: 'relative', width: '56px', height: '56px',
-                                  borderRadius: '6px', overflow: 'hidden', cursor: 'pointer', flexShrink: 0,
-                                  border: `2px solid ${idx === fotoIdx ? '#c49818' : 'transparent'}`,
+                                  position: 'relative', width: '52px', height: '52px',
+                                  borderRadius: '6px', overflow: 'hidden', cursor: 'pointer',
+                                  border: `2px solid ${idx === midiaIdx ? '#c49818' : 'transparent'}`,
+                                  flexShrink: 0,
                                 }}
                               >
-                                <img
-                                  src={thumbSrc}
-                                  alt=""
-                                  style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                                />
+                                <img src={thumbSrc} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                                 {midia.tipo === 'video' && (
-                                  <div style={{
-                                    position: 'absolute', inset: 0,
-                                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                    backgroundColor: 'rgba(0,0,0,0.4)',
-                                  }}>
-                                    <div style={{
-                                      width: '18px', height: '18px', borderRadius: '50%',
-                                      backgroundColor: 'rgba(255,255,255,0.9)',
-                                      display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                    }}>
-                                      <div style={{ width: 0, height: 0, borderTop: '5px solid transparent', borderBottom: '5px solid transparent', borderLeft: '8px solid #000', marginLeft: '2px' }} />
+                                  <div style={{ position: 'absolute', inset: 0, backgroundColor: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                    <div style={{ width: '16px', height: '16px', borderRadius: '50%', backgroundColor: 'rgba(255,255,255,0.9)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                      <div style={{ width: 0, height: 0, borderTop: '4px solid transparent', borderBottom: '4px solid transparent', borderLeft: '7px solid #000', marginLeft: '2px' }} />
                                     </div>
                                   </div>
                                 )}
@@ -940,355 +982,405 @@ export default function ImoveisPage() {
                           })}
                         </div>
                       )}
+
+                      {/* Adicionar foto + vídeo */}
+                      <div style={{ display: 'flex', gap: '8px' }}>
+                        <input ref={fotoInputRef} type="file" accept="image/jpeg,image/png,image/webp" multiple style={{ display: 'none' }} onChange={handleAdicionarFotos} />
+                        <button
+                          onClick={() => fotoInputRef.current?.click()}
+                          disabled={adicionandoFoto}
+                          style={{
+                            flex: 1, padding: '8px', borderRadius: '8px',
+                            border: '1px dashed var(--paper-3, #dddac8)',
+                            backgroundColor: 'transparent',
+                            color: adicionandoFoto ? 'var(--sepia)' : 'var(--ink, #1b3a2f)',
+                            fontSize: '12px', fontWeight: 700,
+                            cursor: adicionandoFoto ? 'not-allowed' : 'pointer',
+                          }}
+                        >
+                          {adicionandoFoto ? 'Enviando...' : '+ Fotos'}
+                        </button>
+
+                        <div style={{ flex: 2, display: 'flex', gap: '6px' }}>
+                          <input
+                            type="text"
+                            placeholder="URL YouTube"
+                            value={urlVideo}
+                            onChange={(e) => { setUrlVideo(e.target.value); setErroVideo('') }}
+                            style={{
+                              flex: 1,
+                              backgroundColor: 'var(--paper-2, #eae6d4)',
+                              color: 'var(--ink, #1b3a2f)',
+                              border: `1px solid ${erroVideo ? '#F87171' : 'var(--paper-3, #dddac8)'}`,
+                              borderRadius: '7px', padding: '8px 10px', fontSize: '12px', outline: 'none',
+                            }}
+                          />
+                          <button
+                            onClick={handleAdicionarVideo}
+                            disabled={adicionandoVideo || !urlVideo.trim()}
+                            style={{
+                              backgroundColor: 'var(--ink, #1b3a2f)',
+                              color: 'var(--gold, #c49818)',
+                              border: '1px solid var(--gold, #c49818)',
+                              borderRadius: '7px', padding: '8px 12px',
+                              fontSize: '12px', fontWeight: 700, whiteSpace: 'nowrap',
+                              cursor: adicionandoVideo || !urlVideo.trim() ? 'not-allowed' : 'pointer',
+                              opacity: adicionandoVideo || !urlVideo.trim() ? 0.5 : 1,
+                            }}
+                          >
+                            {adicionandoVideo ? '...' : '+ Vídeo'}
+                          </button>
+                        </div>
+                      </div>
+                      {erroVideo && <p style={{ color: '#F87171', fontSize: '11px', margin: '4px 0 0 0' }}>{erroVideo}</p>}
                     </div>
-                  )
-                })()}
-
-                {/* ── Adicionar fotos ── */}
-                <div style={{ marginBottom: '12px' }}>
-                  <input
-                    ref={fotoInputRef}
-                    type="file"
-                    accept="image/jpeg,image/png,image/webp"
-                    multiple
-                    style={{ display: 'none' }}
-                    onChange={handleAdicionarFotos}
-                  />
-                  <button
-                    onClick={() => fotoInputRef.current?.click()}
-                    disabled={adicionandoFoto}
-                    style={{
-                      width: '100%', padding: '8px', borderRadius: '8px',
-                      border: '1px dashed var(--paper-3, #dddac8)', backgroundColor: 'transparent',
-                      color: adicionandoFoto ? 'var(--sepia, #7a9e88)' : 'var(--ink, #1b3a2f)',
-                      fontSize: '12px', fontWeight: 700,
-                      cursor: adicionandoFoto ? 'not-allowed' : 'pointer',
-                    }}
-                  >
-                    {adicionandoFoto ? 'Enviando...' : '+ Adicionar fotos'}
-                  </button>
-                </div>
-
-                {/* ── Adicionar vídeo ── */}
-                <div>
-                  <div style={{ display: 'flex', gap: '6px' }}>
-                    <input
-                      type="text"
-                      placeholder="URL do YouTube"
-                      value={urlVideo}
-                      onChange={(e) => { setUrlVideo(e.target.value); setErroVideo('') }}
-                      style={{
-                        flex: 1,
-                        backgroundColor: 'var(--paper, #f4f1e6)',
-                        color: 'var(--ink, #1b3a2f)',
-                        border: `1px solid ${erroVideo ? '#F87171' : 'var(--paper-3, #dddac8)'}`,
-                        borderRadius: '7px', padding: '8px 10px', fontSize: '12px', outline: 'none',
-                      }}
-                    />
-                    <button
-                      onClick={handleAdicionarVideo}
-                      disabled={adicionandoVideo || !urlVideo.trim()}
-                      style={{
-                        backgroundColor: 'rgba(196,152,24,0.15)', color: '#c49818',
-                        border: 'none', borderRadius: '7px', padding: '8px 12px',
-                        fontSize: '12px', fontWeight: 700, whiteSpace: 'nowrap',
-                        cursor: adicionandoVideo || !urlVideo.trim() ? 'not-allowed' : 'pointer',
-                        opacity: adicionandoVideo || !urlVideo.trim() ? 0.5 : 1,
-                      }}
-                    >
-                      {adicionandoVideo ? '...' : '+ Vídeo'}
-                    </button>
-                  </div>
-                  {erroVideo && (
-                    <p style={{ color: '#F87171', fontSize: '11px', margin: '4px 0 0 0' }}>{erroVideo}</p>
                   )}
                 </div>
-              </>
-            )}
-          </div>
-        )}
-      </div>
-
-      {/* ── Coluna 3: Formulário ── */}
-      <div
-        style={{
-          width: '310px',
-          flexShrink: 0,
-          height: '100%',
-          backgroundColor: 'var(--paper, #f4f1e6)',
-          display: 'flex',
-          flexDirection: 'column',
-          overflow: 'hidden',
-        }}
-      >
-        {/* Header formulário */}
-        <div
-          style={{
-            padding: '12px 16px',
-            borderBottom: '1px solid var(--paper-3, #dddac8)',
-            flexShrink: 0,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-          }}
-        >
-          <span style={{ color: 'var(--ink, #1b3a2f)', fontSize: '13px', fontWeight: 800 }}>
-            {modoNovo ? 'Novo imóvel' : imovelSel ? `#${imovelSel.codigo}` : '---'}
-          </span>
-          {!modoNovo && imovelSel && (
-            <button
-              onClick={pedirExclusao}
-              disabled={confirmandoExclusao}
-              style={{
-                backgroundColor: 'rgba(248,113,113,0.12)',
-                color: '#F87171',
-                border: 'none',
-                borderRadius: '7px',
-                padding: '5px 10px',
-                fontSize: '12px',
-                fontWeight: 700,
-                cursor: confirmandoExclusao ? 'not-allowed' : 'pointer',
-                opacity: confirmandoExclusao ? 0.5 : 1,
-              }}
-            >
-              Excluir
-            </button>
-          )}
-        </div>
-
-        {/* Campos */}
-        {(modoNovo || imovelSel) ? (
-          <>
-            <div style={{ flex: 1, overflowY: 'auto', padding: '14px 16px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
-              {/* Status */}
-              <CampoForm label="Status">
-                <select
-                  value={form.status}
-                  onChange={(e) => setForm((f) => ({ ...f, status: e.target.value, publicarEm: '' }))}
-                  style={estiloSelectForm}
-                >
-                  <option value="ativo" style={estiloOption}>Ativo</option>
-                  <option value="pausado" style={estiloOption}>Pausado</option>
-                  <option value="inativo" style={estiloOption}>Inativo</option>
-                  <option value="agendado" style={estiloOption}>Agendado</option>
-                </select>
-              </CampoForm>
-
-              {/* Publicar a partir de */}
-              {form.status === 'agendado' && (
-                <CampoForm label="Publicar a partir de">
-                  <input
-                    type="datetime-local"
-                    value={form.publicarEm}
-                    onChange={(e) => setForm((f) => ({ ...f, publicarEm: e.target.value }))}
-                    style={estiloInputForm}
-                  />
-                </CampoForm>
               )}
 
-              {/* Cidade */}
-              <CampoForm label="Cidade *">
-                <select
-                  value={form.cidadeId}
-                  onChange={(e) => setForm((f) => ({ ...f, cidadeId: e.target.value, regiaoId: '' }))}
-                  style={estiloSelectForm}
-                >
-                  <option value="" disabled hidden>Selecione</option>
-                  {formCidades.map((c) => (
-                    <option key={c.id} value={String(c.id)} style={estiloOption}>{c.nome}</option>
-                  ))}
-                </select>
-              </CampoForm>
+              {/* Novo imóvel — aviso de galeria */}
+              {modoNovo && (
+                <div style={{ padding: '12px 20px', backgroundColor: 'var(--paper, #f4f1e6)', borderBottom: '1px solid var(--paper-3, #dddac8)', flexShrink: 0 }}>
+                  <p style={{ color: 'var(--sepia, #7a9e88)', fontSize: '12px', margin: 0, fontStyle: 'italic' }}>
+                    📷 Salve o imóvel primeiro para adicionar fotos e vídeos.
+                  </p>
+                </div>
+              )}
 
-              {/* Região */}
-              <CampoForm label="Região">
-                <select
-                  value={form.regiaoId}
-                  onChange={(e) => setForm((f) => ({ ...f, regiaoId: e.target.value }))}
-                  disabled={!form.cidadeId || formRegioes.length === 0}
-                  style={{ ...estiloSelectForm, opacity: !form.cidadeId ? 0.4 : 1 }}
-                >
-                  <option value="">Sem região</option>
-                  {formRegioes.map((r) => (
-                    <option key={r.id} value={String(r.id)} style={estiloOption}>{r.nome}</option>
-                  ))}
-                </select>
-              </CampoForm>
-
-              {/* Tipo */}
-              <CampoForm label="Tipo">
-                <select
-                  value={form.tipo}
-                  onChange={(e) => setForm((f) => ({ ...f, tipo: e.target.value }))}
-                  style={estiloSelectForm}
-                >
-                  {['Casa', 'Apartamento', 'Sobrado', 'Terreno', 'Comercial'].map((t) => (
-                    <option key={t} value={t} style={estiloOption}>{t}</option>
-                  ))}
-                </select>
-              </CampoForm>
-
-              {/* Preço */}
-              <CampoForm label="Preço (R$)">
-                <input
-                  type="number"
-                  min="0"
-                  step="1000"
-                  value={form.preco}
-                  onChange={(e) => setForm((f) => ({ ...f, preco: e.target.value }))}
-                  placeholder="Ex: 480000"
-                  style={estiloInputForm}
-                  onFocus={(e) => { e.currentTarget.style.borderColor = 'var(--gold, #c49818)' }}
-                  onBlur={(e) => { e.currentTarget.style.borderColor = 'var(--paper-3, #dddac8)' }}
-                />
-              </CampoForm>
-
-              {/* Grid 2 colunas: Quartos + Banheiros */}
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
-                <CampoForm label="Quartos">
-                  <input
-                    type="number"
-                    min="0"
-                    max="20"
-                    value={form.quartos}
-                    onChange={(e) => setForm((f) => ({ ...f, quartos: e.target.value }))}
-                    style={estiloInputForm}
-                    onFocus={(e) => { e.currentTarget.style.borderColor = 'var(--gold, #c49818)' }}
-                    onBlur={(e) => { e.currentTarget.style.borderColor = 'var(--paper-3, #dddac8)' }}
-                  />
-                </CampoForm>
-                <CampoForm label="Banheiros">
-                  <input
-                    type="number"
-                    min="0"
-                    max="20"
-                    value={form.banheiros}
-                    onChange={(e) => setForm((f) => ({ ...f, banheiros: e.target.value }))}
-                    style={estiloInputForm}
-                    onFocus={(e) => { e.currentTarget.style.borderColor = 'var(--gold, #c49818)' }}
-                    onBlur={(e) => { e.currentTarget.style.borderColor = 'var(--paper-3, #dddac8)' }}
-                  />
-                </CampoForm>
-              </div>
-
-              {/* Grid 2 colunas: Área + Vagas */}
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
-                <CampoForm label="Área m²">
-                  <input
-                    type="number"
-                    min="0"
-                    step="0.1"
-                    value={form.areaM2}
-                    onChange={(e) => setForm((f) => ({ ...f, areaM2: e.target.value }))}
-                    placeholder="Ex: 120.5"
-                    style={estiloInputForm}
-                    onFocus={(e) => { e.currentTarget.style.borderColor = 'var(--gold, #c49818)' }}
-                    onBlur={(e) => { e.currentTarget.style.borderColor = 'var(--paper-3, #dddac8)' }}
-                  />
-                </CampoForm>
-                <CampoForm label="Vagas">
-                  <input
-                    type="number"
-                    min="0"
-                    max="10"
-                    value={form.vagas}
-                    onChange={(e) => setForm((f) => ({ ...f, vagas: e.target.value }))}
-                    style={estiloInputForm}
-                    onFocus={(e) => { e.currentTarget.style.borderColor = 'var(--gold, #c49818)' }}
-                    onBlur={(e) => { e.currentTarget.style.borderColor = 'var(--paper-3, #dddac8)' }}
-                  />
-                </CampoForm>
-              </div>
-
-              {/* Endereço */}
-              <CampoForm label="Endereço *">
-                <input
-                  type="text"
-                  value={form.endereco}
-                  onChange={(e) => setForm((f) => ({ ...f, endereco: e.target.value }))}
-                  placeholder="Ex: Rua das Flores, 123"
-                  style={estiloInputForm}
-                  onFocus={(e) => { e.currentTarget.style.borderColor = 'var(--gold, #c49818)' }}
-                  onBlur={(e) => { e.currentTarget.style.borderColor = 'var(--paper-3, #dddac8)' }}
-                />
-              </CampoForm>
-
-              {/* Descrição */}
-              <CampoForm label="Descrição">
-                <textarea
-                  value={form.descricao}
-                  onChange={(e) => setForm((f) => ({ ...f, descricao: e.target.value }))}
-                  placeholder="Descrição opcional..."
-                  rows={4}
+              {/* ── Formulário ── */}
+              <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column' }}>
+                {/* Header form */}
+                <div
                   style={{
-                    ...estiloInputForm,
-                    resize: 'vertical',
-                    minHeight: '80px',
-                    fontFamily: 'inherit',
+                    padding: '14px 20px',
+                    borderBottom: '1px solid var(--paper-3, #dddac8)',
+                    flexShrink: 0,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    backgroundColor: 'var(--paper, #f4f1e6)',
                   }}
-                  onFocus={(e) => { e.currentTarget.style.borderColor = 'var(--gold, #c49818)' }}
-                  onBlur={(e) => { e.currentTarget.style.borderColor = 'var(--paper-3, #dddac8)' }}
-                />
-              </CampoForm>
-            </div>
+                >
+                  <span style={{ color: 'var(--ink, #1b3a2f)', fontFamily: "'Playfair Display', serif", fontSize: '18px', fontWeight: 700 }}>
+                    {modoNovo ? 'Novo imóvel' : `Imóvel #${imovelSel?.codigo}`}
+                  </span>
+                  {!modoNovo && imovelSel && (
+                    <button
+                      onClick={pedirExclusao}
+                      disabled={confirmandoExclusao}
+                      style={{
+                        backgroundColor: 'rgba(248,113,113,0.1)',
+                        color: '#F87171',
+                        border: '1px solid rgba(248,113,113,0.3)',
+                        borderRadius: '7px',
+                        padding: '6px 12px',
+                        fontSize: '12px',
+                        fontWeight: 700,
+                        cursor: confirmandoExclusao ? 'not-allowed' : 'pointer',
+                        opacity: confirmandoExclusao ? 0.5 : 1,
+                      }}
+                    >
+                      Excluir
+                    </button>
+                  )}
+                </div>
 
-            {/* Rodapé botões */}
-            <div
-              style={{
-                padding: '12px 16px',
-                borderTop: '1px solid var(--paper-3, #dddac8)',
-                display: 'flex',
-                gap: '8px',
-                flexShrink: 0,
-              }}
-            >
-              <button
-                onClick={cancelar}
-                style={{
-                  flex: 1,
-                  padding: '9px',
-                  borderRadius: '8px',
-                  border: '1px solid var(--paper-3, #dddac8)',
-                  fontSize: '13px',
-                  fontWeight: 700,
-                  cursor: 'pointer',
-                  backgroundColor: 'var(--paper-3, #dddac8)',
-                  color: 'var(--ink, #1b3a2f)',
-                }}
-              >
-                Cancelar
-              </button>
-              <button
-                onClick={salvar}
-                disabled={salvando}
-                style={{
-                  flex: 1,
-                  padding: '9px',
-                  borderRadius: '8px',
-                  border: '1px solid var(--gold, #c49818)',
-                  fontSize: '13px',
-                  fontWeight: 700,
-                  cursor: salvando ? 'not-allowed' : 'pointer',
-                  backgroundColor: 'var(--ink, #1b3a2f)',
-                  color: 'var(--gold, #c49818)',
-                  opacity: salvando ? 0.5 : 1,
-                }}
-              >
-                {salvando ? 'Salvando...' : 'Salvar'}
-              </button>
-            </div>
-          </>
-        ) : (
-          <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <p style={{ color: 'var(--sepia, #7a9e88)', fontSize: '13px' }}>
-              Selecione ou crie um imóvel
-            </p>
-          </div>
-        )}
+                {/* Campos */}
+                <div style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: '14px', flex: 1 }}>
+                  {/* Grid 2 col: Status + Publicar em */}
+                  <div style={{ display: 'grid', gridTemplateColumns: form.status === 'agendado' ? '1fr 1fr' : '1fr', gap: '14px' }}>
+                    <CampoForm label="Status">
+                      <select
+                        value={form.status}
+                        onChange={(e) => setForm((f) => ({ ...f, status: e.target.value, publicarEm: '' }))}
+                        style={estiloSelectForm}
+                      >
+                        <option value="ativo" style={estiloOption}>Ativo</option>
+                        <option value="pausado" style={estiloOption}>Pausado</option>
+                        <option value="inativo" style={estiloOption}>Inativo</option>
+                        <option value="agendado" style={estiloOption}>Agendado</option>
+                      </select>
+                    </CampoForm>
+                    {form.status === 'agendado' && (
+                      <CampoForm label="Publicar a partir de">
+                        <input
+                          type="datetime-local"
+                          value={form.publicarEm}
+                          onChange={(e) => setForm((f) => ({ ...f, publicarEm: e.target.value }))}
+                          style={estiloInputForm}
+                          onFocus={(e) => { e.currentTarget.style.borderColor = 'var(--gold, #c49818)' }}
+                          onBlur={(e) => { e.currentTarget.style.borderColor = 'var(--paper-3, #dddac8)' }}
+                        />
+                      </CampoForm>
+                    )}
+                  </div>
+
+                  {/* Cidade + Região */}
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px' }}>
+                    <CampoForm label="Cidade *">
+                      <select
+                        value={form.cidadeId}
+                        onChange={(e) => setForm((f) => ({ ...f, cidadeId: e.target.value, regiaoId: '' }))}
+                        style={estiloSelectForm}
+                      >
+                        <option value="" disabled hidden>Selecione</option>
+                        {formCidades.map((c) => (
+                          <option key={c.id} value={String(c.id)} style={estiloOption}>{c.nome}</option>
+                        ))}
+                      </select>
+                    </CampoForm>
+                    <CampoForm label="Região">
+                      <select
+                        value={form.regiaoId}
+                        onChange={(e) => setForm((f) => ({ ...f, regiaoId: e.target.value }))}
+                        disabled={!form.cidadeId || formRegioes.length === 0}
+                        style={{ ...estiloSelectForm, opacity: !form.cidadeId ? 0.5 : 1 }}
+                      >
+                        <option value="">Sem região</option>
+                        {formRegioes.map((r) => (
+                          <option key={r.id} value={String(r.id)} style={estiloOption}>{r.nome}</option>
+                        ))}
+                      </select>
+                    </CampoForm>
+                  </div>
+
+                  {/* Tipo */}
+                  <CampoForm label="Tipo">
+                    <select
+                      value={form.tipo}
+                      onChange={(e) => setForm((f) => ({ ...f, tipo: e.target.value }))}
+                      style={estiloSelectForm}
+                    >
+                      {['Casa', 'Apartamento', 'Sobrado', 'Terreno', 'Comercial'].map((t) => (
+                        <option key={t} value={t} style={estiloOption}>{t}</option>
+                      ))}
+                    </select>
+                  </CampoForm>
+
+                  {/* Preço */}
+                  <CampoForm label="Preço (R$)">
+                    <input
+                      type="number" min="0" step="1000"
+                      value={form.preco}
+                      onChange={(e) => setForm((f) => ({ ...f, preco: e.target.value }))}
+                      placeholder="Ex: 480000"
+                      style={estiloInputForm}
+                      onFocus={(e) => { e.currentTarget.style.borderColor = 'var(--gold, #c49818)' }}
+                      onBlur={(e) => { e.currentTarget.style.borderColor = 'var(--paper-3, #dddac8)' }}
+                    />
+                  </CampoForm>
+
+                  {/* Grid: Quartos + Banheiros + Área + Vagas */}
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: '12px' }}>
+                    <CampoForm label="Quartos">
+                      <input type="number" min="0" max="20" value={form.quartos}
+                        onChange={(e) => setForm((f) => ({ ...f, quartos: e.target.value }))}
+                        style={estiloInputForm}
+                        onFocus={(e) => { e.currentTarget.style.borderColor = 'var(--gold, #c49818)' }}
+                        onBlur={(e) => { e.currentTarget.style.borderColor = 'var(--paper-3, #dddac8)' }}
+                      />
+                    </CampoForm>
+                    <CampoForm label="Banheiros">
+                      <input type="number" min="0" max="20" value={form.banheiros}
+                        onChange={(e) => setForm((f) => ({ ...f, banheiros: e.target.value }))}
+                        style={estiloInputForm}
+                        onFocus={(e) => { e.currentTarget.style.borderColor = 'var(--gold, #c49818)' }}
+                        onBlur={(e) => { e.currentTarget.style.borderColor = 'var(--paper-3, #dddac8)' }}
+                      />
+                    </CampoForm>
+                    <CampoForm label="Área m²">
+                      <input type="number" min="0" step="0.1" value={form.areaM2}
+                        onChange={(e) => setForm((f) => ({ ...f, areaM2: e.target.value }))}
+                        placeholder="120"
+                        style={estiloInputForm}
+                        onFocus={(e) => { e.currentTarget.style.borderColor = 'var(--gold, #c49818)' }}
+                        onBlur={(e) => { e.currentTarget.style.borderColor = 'var(--paper-3, #dddac8)' }}
+                      />
+                    </CampoForm>
+                    <CampoForm label="Vagas">
+                      <input type="number" min="0" max="10" value={form.vagas}
+                        onChange={(e) => setForm((f) => ({ ...f, vagas: e.target.value }))}
+                        style={estiloInputForm}
+                        onFocus={(e) => { e.currentTarget.style.borderColor = 'var(--gold, #c49818)' }}
+                        onBlur={(e) => { e.currentTarget.style.borderColor = 'var(--paper-3, #dddac8)' }}
+                      />
+                    </CampoForm>
+                  </div>
+
+                  {/* Endereço */}
+                  <CampoForm label="Endereço *">
+                    <input
+                      type="text"
+                      value={form.endereco}
+                      onChange={(e) => setForm((f) => ({ ...f, endereco: e.target.value }))}
+                      placeholder="Ex: Rua das Flores, 123"
+                      style={estiloInputForm}
+                      onFocus={(e) => { e.currentTarget.style.borderColor = 'var(--gold, #c49818)' }}
+                      onBlur={(e) => { e.currentTarget.style.borderColor = 'var(--paper-3, #dddac8)' }}
+                    />
+                  </CampoForm>
+
+                  {/* Descrição */}
+                  <CampoForm label="Descrição">
+                    <textarea
+                      value={form.descricao}
+                      onChange={(e) => setForm((f) => ({ ...f, descricao: e.target.value }))}
+                      placeholder="Descrição opcional..."
+                      rows={4}
+                      style={{ ...estiloInputForm, resize: 'vertical', minHeight: '88px', fontFamily: 'inherit' }}
+                      onFocus={(e) => { e.currentTarget.style.borderColor = 'var(--gold, #c49818)' }}
+                      onBlur={(e) => { e.currentTarget.style.borderColor = 'var(--paper-3, #dddac8)' }}
+                    />
+                  </CampoForm>
+                </div>
+
+                {/* Rodapé botões */}
+                <div
+                  style={{
+                    padding: '14px 20px',
+                    borderTop: '1px solid var(--paper-3, #dddac8)',
+                    display: 'flex',
+                    gap: '10px',
+                    flexShrink: 0,
+                    backgroundColor: 'var(--paper, #f4f1e6)',
+                  }}
+                >
+                  <button
+                    onClick={cancelar}
+                    style={{
+                      flex: 1, padding: '10px', borderRadius: '8px',
+                      border: '1px solid var(--paper-3, #dddac8)',
+                      fontSize: '13px', fontWeight: 700, cursor: 'pointer',
+                      backgroundColor: 'var(--paper-3, #dddac8)',
+                      color: 'var(--ink, #1b3a2f)',
+                    }}
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    onClick={salvar}
+                    disabled={salvando}
+                    style={{
+                      flex: 2, padding: '10px', borderRadius: '8px',
+                      border: '1px solid var(--gold, #c49818)',
+                      fontSize: '13px', fontWeight: 700,
+                      cursor: salvando ? 'not-allowed' : 'pointer',
+                      backgroundColor: 'var(--ink, #1b3a2f)',
+                      color: 'var(--gold, #c49818)',
+                      opacity: salvando ? 0.6 : 1,
+                    }}
+                  >
+                    {salvando ? 'Salvando...' : 'Salvar'}
+                  </button>
+                </div>
+              </div>
+            </>
+          )}
+        </div>
       </div>
 
-      {/* Spinner keyframes */}
       <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+    </div>
+  )
+}
+
+// ── CardAdmin ──────────────────────────────────────────────
+function CardAdmin({
+  imovel,
+  selecionado,
+  onClick,
+}: {
+  imovel: Imovel
+  selecionado: boolean
+  onClick: () => void
+}) {
+  return (
+    <div
+      onClick={onClick}
+      style={{
+        margin: '0 10px 8px',
+        backgroundColor: selecionado ? 'rgba(196,152,24,0.08)' : 'var(--paper-2, #eae6d4)',
+        borderRadius: '10px',
+        cursor: 'pointer',
+        overflow: 'hidden',
+        display: 'flex',
+        border: `1.5px solid ${selecionado ? 'var(--gold, #c49818)' : 'var(--paper-3, #dddac8)'}`,
+        transition: 'border-color 0.15s, background 0.15s',
+      }}
+      onMouseOver={(e) => { if (!selecionado) e.currentTarget.style.borderColor = 'var(--gold, #c49818)' }}
+      onMouseOut={(e) => { if (!selecionado) e.currentTarget.style.borderColor = 'var(--paper-3, #dddac8)' }}
+    >
+      {/* Foto capa */}
+      <div
+        style={{
+          position: 'relative',
+          width: '96px',
+          minHeight: '96px',
+          flexShrink: 0,
+          backgroundColor: 'var(--paper-3, #dddac8)',
+        }}
+      >
+        {imovel.fotoCapaSrc ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={imovel.fotoCapaSrc} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+        ) : (
+          <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="rgba(0,0,0,0.15)" strokeWidth="1.5">
+              <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
+              <polyline points="9 22 9 12 15 12 15 22" />
+            </svg>
+          </div>
+        )}
+        {/* Badge tipo */}
+        <span
+          style={{
+            position: 'absolute', bottom: '5px', left: '5px',
+            backgroundColor: 'rgba(0,0,0,0.55)', color: '#fff',
+            fontSize: '9px', fontWeight: 800, padding: '1px 6px',
+            borderRadius: '3px', letterSpacing: '0.06em', textTransform: 'uppercase',
+          }}
+        >
+          {imovel.tipo}
+        </span>
+      </div>
+
+      {/* Info */}
+      <div style={{ padding: '8px 10px', flex: 1, minWidth: 0 }}>
+        {/* Preço + status */}
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '2px' }}>
+          <p style={{ color: 'var(--gold, #c49818)', fontSize: '15px', fontWeight: 800, margin: 0 }}>
+            {formatarPreco(imovel.preco)}
+          </p>
+          <span style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '10px', fontWeight: 700, color: 'var(--sepia, #7a9e88)' }}>
+            <span style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: corStatus(imovel.status), flexShrink: 0 }} />
+            {labelStatus(imovel.status)}
+          </span>
+        </div>
+
+        {/* Região / tipo */}
+        <p style={{ color: 'var(--ink, #1b3a2f)', fontSize: '13px', fontWeight: 700, margin: '0 0 8px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+          {imovel.regiaoNome ? `${imovel.regiaoNome} — ` : ''}{imovel.tipo}
+        </p>
+
+        {/* Badges */}
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px', marginBottom: '8px' }}>
+          {imovel.quartos > 0 && <span style={estiloBadge}>{imovel.quartos} qtos</span>}
+          {imovel.banheiros > 0 && <span style={estiloBadge}>{imovel.banheiros} bnh</span>}
+          {imovel.vagas > 0 && <span style={estiloBadge}>{imovel.vagas} vagas</span>}
+          {imovel.areaM2 > 0 && <span style={estiloBadge}>{imovel.areaM2} m²</span>}
+        </div>
+
+        {/* Código */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+          {imovel.regiaoNome && (
+            <span style={{ color: 'var(--gold, #c49818)', fontSize: '10px', fontWeight: 700 }}>
+              <span style={{ fontSize: '8px' }}>◆</span> {imovel.regiaoNome.toUpperCase()}
+            </span>
+          )}
+          {imovel.regiaoNome && <span style={{ color: 'var(--paper-3, #dddac8)', fontSize: '10px' }}>·</span>}
+          <span style={{ color: 'var(--ink, #1b3a2f)', fontSize: '10px', fontWeight: 800 }}>{imovel.codigo}</span>
+        </div>
+      </div>
     </div>
   )
 }
@@ -1301,15 +1393,6 @@ const estiloSpinner: React.CSSProperties = {
   border: '3px solid rgba(196,152,24,0.2)',
   borderTopColor: '#c49818',
   animation: 'spin 0.8s linear infinite',
-}
-
-const estiloSecaoTitulo: React.CSSProperties = {
-  color: 'var(--sepia, #7a9e88)',
-  fontSize: '11px',
-  fontWeight: 700,
-  textTransform: 'uppercase',
-  letterSpacing: '0.06em',
-  margin: '0 0 10px 0',
 }
 
 const estiloInputForm: React.CSSProperties = {
@@ -1343,20 +1426,29 @@ const estiloOption: React.CSSProperties = {
   backgroundColor: 'var(--paper-2, #eae6d4)',
 }
 
-function estiloSelectFiltro(temValor: boolean): React.CSSProperties {
-  return {
-    width: '100%',
-    boxSizing: 'border-box',
-    backgroundColor: 'var(--paper-2, #eae6d4)',
-    color: temValor ? 'var(--ink, #1b3a2f)' : 'var(--sepia, #7a9e88)',
-    border: '1px solid var(--paper-3, #dddac8)',
-    borderRadius: '7px',
-    padding: '7px 10px',
-    fontSize: '12px',
-    fontWeight: 700,
-    outline: 'none',
-    cursor: 'pointer',
-  }
+const estiloSelectHeader: React.CSSProperties = {
+  backgroundColor: 'transparent',
+  color: '#ffffff',
+  border: '1.5px solid var(--gold, #c49818)',
+  borderRadius: '0',
+  padding: '5px 28px 5px 10px',
+  fontSize: '12px',
+  fontWeight: 700,
+  outline: 'none',
+  cursor: 'pointer',
+  width: '120px',
+  appearance: 'none',
+  WebkitAppearance: 'none',
+}
+
+const estiloBadge: React.CSSProperties = {
+  backgroundColor: 'var(--paper-3, #dddac8)',
+  color: 'var(--ink, #1b3a2f)',
+  fontSize: '11px',
+  fontWeight: 600,
+  padding: '2px 7px',
+  borderRadius: '5px',
+  border: '1px solid rgba(0,0,0,0.08)',
 }
 
 function estiloNavBtn(lado: 'left' | 'right'): React.CSSProperties {
@@ -1365,7 +1457,7 @@ function estiloNavBtn(lado: 'left' | 'right'): React.CSSProperties {
     top: '50%',
     [lado]: '8px',
     transform: 'translateY(-50%)',
-    backgroundColor: 'rgba(0,0,0,0.6)',
+    backgroundColor: 'rgba(0,0,0,0.55)',
     color: '#fff',
     border: 'none',
     borderRadius: '6px',
@@ -1380,19 +1472,11 @@ function estiloNavBtn(lado: 'left' | 'right'): React.CSSProperties {
   }
 }
 
-// ── Componente CampoForm ───────────────────────────────────
+// ── CampoForm ──────────────────────────────────────────────
 function CampoForm({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div>
-      <label
-        style={{
-          display: 'block',
-          color: 'var(--ink, #1b3a2f)',
-          fontSize: '12px',
-          fontWeight: 700,
-          marginBottom: '5px',
-        }}
-      >
+      <label style={{ display: 'block', color: 'var(--ink, #1b3a2f)', fontSize: '12px', fontWeight: 700, marginBottom: '5px' }}>
         {label}
       </label>
       {children}

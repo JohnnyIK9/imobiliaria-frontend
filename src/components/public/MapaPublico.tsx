@@ -81,11 +81,22 @@ export default function MapaPublico({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  // Recentra quando cidade muda
+  // Recentra quando cidade muda e força o mapa a ocupar o container inteiro
   useEffect(() => {
     if (!mapRef.current) return
+    mapRef.current.invalidateSize()
     mapRef.current.setView([lat, lng], zoom)
   }, [lat, lng, zoom])
+
+  // ResizeObserver: sempre que o container mudar de tamanho, atualiza o Leaflet
+  useEffect(() => {
+    if (!containerRef.current) return
+    const obs = new ResizeObserver(() => {
+      mapRef.current?.invalidateSize()
+    })
+    obs.observe(containerRef.current)
+    return () => obs.disconnect()
+  }, [])
 
   // Renderiza polígonos das regiões
   useEffect(() => {

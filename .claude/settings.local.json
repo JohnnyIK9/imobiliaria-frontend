@@ -1,0 +1,14 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git checkout:*)",
+      "Bash(git push:*)",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" http://192.168.0.165:3000)",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" \"http://192.168.0.165:3000/api/cidades\")",
+      "Bash(npm install:*)",
+      "Bash(node -e \"require\\('/Users/johnnyhenrique/Documents/trabporfora/imobiliaria-frontend/node_modules/jiti/lib/jiti.cjs'\\)\")",
+      "Bash(python3 -m json.tool)",
+      "Bash(git add:*)"
+    ]
+  }
+}

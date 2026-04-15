@@ -210,6 +210,7 @@ export default function HomePage() {
     const nova = regiaoSelecionada === regiaoId ? null : regiaoId
     setRegiaoSelecionada(nova)
     setFiltrosPendentes((f) => ({ ...f, regiaoId: nova ? String(nova) : '' }))
+    if (isMobile && nova) setDrawerAberto(true)
     if (cidadeSel) {
       carregarImoveis({
         cidadeId: cidadeSel.id,
@@ -226,7 +227,7 @@ export default function HomePage() {
   function buscar() {
     setFiltros(filtrosPendentes)
     setRegiaoSelecionada(filtrosPendentes.regiaoId ? Number(filtrosPendentes.regiaoId) : null)
-    setDrawerAberto(false)
+    if (!isMobile) setDrawerAberto(false)
     setFiltrosAbertos(false)
     if (!cidadeSel) return
     carregarImoveis({

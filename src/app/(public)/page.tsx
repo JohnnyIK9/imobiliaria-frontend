@@ -296,7 +296,7 @@ export default function HomePage() {
       <header style={{
         backgroundColor: 'var(--ink, #1b3a2f)',
         borderBottom: '3px solid var(--gold, #c49818)',
-        padding: '0 24px 2px 24px',
+        padding: isMobile ? '0 24px 2px 8px' : '0 24px 2px 24px',
         height: '60px',
         display: 'flex',
         alignItems: 'center',
@@ -306,14 +306,27 @@ export default function HomePage() {
         position: 'relative',
       }}>
         {/* Logo */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-          <div style={{ border: '1px solid var(--gold, #c49818)', padding: '0 18px', display: 'flex', alignItems: 'center' }}>
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/svg/white-02.svg" alt="Logo" style={{ width: '48px', height: '48px', objectFit: 'contain' }} />
+        <div style={{ display: 'flex', alignItems: 'center', gap: isMobile ? '6px' : '10px' }}>
+          <div style={{
+            border: '1px solid var(--gold, #c49818)',
+            padding: isMobile ? '4px 38px' : '0 18px',
+            width: isMobile ? '48px' : undefined,
+            height: isMobile ? '48px' : undefined,
+            backgroundImage: isMobile ? 'url(/png/white-02.png)' : undefined,
+            backgroundSize: isMobile ? 'contain' : undefined,
+            backgroundRepeat: isMobile ? 'no-repeat' : undefined,
+            backgroundPosition: isMobile ? 'center' : undefined,
+            display: 'flex',
+            alignItems: 'center',
+          }}>
+            {!isMobile && (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src="/svg/white-02.svg" alt="Logo" style={{ width: '48px', height: '48px', objectFit: 'contain' }} />
+            )}
           </div>
-          <div style={{ lineHeight: '1.2' }}>
-            <div style={{ fontSize: '13px', fontWeight: 800, color: 'var(--gold, #c49818)', letterSpacing: '0.08em', textTransform: 'uppercase' }}>Imobiliária</div>
-            <div style={{ fontSize: '20px', fontWeight: 800, lineHeight: '1.1', fontFamily: "'Playfair Display', serif" }}>
+          <div style={{ lineHeight: '1.2', whiteSpace: isMobile ? 'nowrap' : undefined }}>
+            <div style={{ fontSize: isMobile ? '9px' : '13px', fontWeight: 800, color: 'var(--gold, #c49818)', letterSpacing: '0.08em', textTransform: 'uppercase' }}>Imobiliária</div>
+            <div style={{ fontSize: isMobile ? '14px' : '20px', fontWeight: 800, lineHeight: '1.1', fontFamily: "'Playfair Display', serif" }}>
               <span style={{ color: '#ffffff' }}>do </span>
               <span style={{ color: 'var(--gold, #c49818)', fontStyle: 'italic' }}>Professor</span>
             </div>

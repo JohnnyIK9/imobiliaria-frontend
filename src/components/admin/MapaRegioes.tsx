@@ -15,6 +15,7 @@ export type RegiaoMapa = {
 export type MapaRegioesRef = {
   ativarDesenho: () => void
   desativarDesenho: () => void
+  finalizarDesenho: () => void
   limparDesenho: () => void
   getPontos: () => Ponto[]
   moverParaCidade: (lat: number, lng: number, zoom: number) => void
@@ -187,34 +188,59 @@ const MapaRegioes = forwardRef<MapaRegioesRef, Props>(function MapaRegioes(
         weight: 2,
       }).addTo(mapSafe)
 
-      // Arrastar move o ponto
-      m.on('mousedown', (ev) => {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        ;(ev as any).originalEvent?.stopPropagation()
+      // Arrastar move o ponto — mouse e touch
+      function iniciarArrasto(clientX: number, clientY: number) {
         mapSafe.dragging.disable()
         let moveu = false
 
-        function onMouseMove(e: MouseEvent) {
+        function mover(cx: number, cy: number) {
           moveu = true
           const rect = containerRef.current!.getBoundingClientRect()
-          const latlng = mapSafe.containerPointToLatLng([e.clientX - rect.left, e.clientY - rect.top])
+          const latlng = mapSafe.containerPointToLatLng([cx - rect.left, cy - rect.top])
           pontosEdicao.current[i] = [latlng.lat, latlng.lng]
           m.setLatLng(latlng as unknown as LatLng)
           atualizarPoligonoEdicao(Lsafe, mapSafe)
           onChangeEdicao.current?.(pontosEdicao.current)
         }
 
-        function onMouseUp() {
+        function onMouseMove(e: MouseEvent) { mover(e.clientX, e.clientY) }
+        function onTouchMove(e: TouchEvent) { e.preventDefault(); mover(e.touches[0].clientX, e.touches[0].clientY) }
+
+        function terminar() {
           mapSafe.dragging.enable()
-          // Se houve movimento real, sinaliza para suprimir o click seguinte
           if (moveu) arrastando.current = true
           document.removeEventListener('mousemove', onMouseMove)
-          document.removeEventListener('mouseup', onMouseUp)
+          document.removeEventListener('mouseup', terminar)
+          document.removeEventListener('touchmove', onTouchMove)
+          document.removeEventListener('touchend', terminar)
         }
 
         document.addEventListener('mousemove', onMouseMove)
-        document.addEventListener('mouseup', onMouseUp)
+        document.addEventListener('mouseup', terminar)
+        document.addEventListener('touchmove', onTouchMove, { passive: false })
+        document.addEventListener('touchend', terminar)
+
+        void clientX; void clientY
+      }
+
+      m.on('mousedown', (ev) => {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        ;(ev as any).originalEvent?.stopPropagation()
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const oe = (ev as any).originalEvent as MouseEvent
+        iniciarArrasto(oe.clientX, oe.clientY)
       })
+
+      // Touch: listener nativo direto no elemento para interceptar antes do Leaflet
+      const el = m.getElement()
+      if (el) {
+        el.addEventListener('touchstart', (e: Event) => {
+          const te = e as TouchEvent
+          te.stopPropagation()
+          te.preventDefault()
+          iniciarArrasto(te.touches[0].clientX, te.touches[0].clientY)
+        }, { passive: false })
+      }
 
       marcadoresEdicao.current.push(m)
     })
@@ -229,6 +255,13 @@ const MapaRegioes = forwardRef<MapaRegioesRef, Props>(function MapaRegioes(
     desativarDesenho() {
       desenhando.current = false
       if (containerRef.current) containerRef.current.style.cursor = ''
+    },
+
+    finalizarDesenho() {
+      if (!desenhando.current || pontosDesenho.current.length < 3) return
+      desenhando.current = false
+      if (containerRef.current) containerRef.current.style.cursor = ''
+      onDesenhoFinalizado?.()
     },
 
     limparDesenho() {

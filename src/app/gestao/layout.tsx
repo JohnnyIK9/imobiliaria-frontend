@@ -55,6 +55,15 @@ function AdminShell({ usuario, children }: { usuario: { nome: string; papel: str
   const pathname = usePathname()
   const router = useRouter()
   const [recolhido, setRecolhido] = useState(false)
+  const [isMobile, setIsMobile] = useState(false)
+  const [menuMobileAberto, setMenuMobileAberto] = useState(false)
+
+  useEffect(() => {
+    const check = () => setIsMobile(window.innerWidth < 768)
+    check()
+    window.addEventListener('resize', check)
+    return () => window.removeEventListener('resize', check)
+  }, [])
 
   async function handleLogout() {
     await logoutApi().catch(() => {})
@@ -73,6 +82,127 @@ function AdminShell({ usuario, children }: { usuario: { nome: string; papel: str
     return pathname.startsWith(href)
   }
 
+  function navegarMobile(href: string) {
+    setMenuMobileAberto(false)
+    router.push(href)
+  }
+
+  // ── Mobile ──────────────────────────────────────────────────
+  if (isMobile) {
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', height: '100dvh', backgroundColor: 'var(--paper, #f4f1e6)', fontFamily: "'DM Sans', sans-serif", overflow: 'hidden' }}>
+
+        {/* Top bar mobile */}
+        <header style={{ backgroundColor: 'var(--ink, #1b3a2f)', borderBottom: '3px solid var(--gold, #c49818)', height: '60px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 16px', flexShrink: 0 }}>
+          {/* Logo */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <div style={{ border: '1px solid var(--gold, #c49818)', padding: '0 8px', display: 'flex', alignItems: 'center', height: '40px' }}>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src="/svg/white-02.svg" alt="Logo" style={{ objectFit: 'contain', width: '32px', height: '32px' }} />
+            </div>
+            <div style={{ lineHeight: '1.2' }}>
+              <div style={{ fontSize: '9px', fontWeight: 800, color: 'var(--gold, #c49818)', letterSpacing: '0.08em', textTransform: 'uppercase' }}>Imobiliária</div>
+              <div style={{ fontSize: '14px', fontWeight: 800, lineHeight: '1.1', fontFamily: "'Playfair Display', serif" }}>
+                <span style={{ color: '#ffffff' }}>do </span>
+                <span style={{ color: 'var(--gold, #c49818)', fontStyle: 'italic' }}>Professor</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Botão hambúrguer */}
+          <button
+            onClick={() => setMenuMobileAberto(true)}
+            style={{ background: 'none', border: '1px solid var(--gold, #c49818)', borderRadius: '6px', padding: '6px 8px', cursor: 'pointer', display: 'flex', flexDirection: 'column', gap: '4px' }}
+          >
+            <span style={{ display: 'block', width: '20px', height: '2px', backgroundColor: 'var(--gold, #c49818)', borderRadius: '2px' }} />
+            <span style={{ display: 'block', width: '20px', height: '2px', backgroundColor: 'var(--gold, #c49818)', borderRadius: '2px' }} />
+            <span style={{ display: 'block', width: '20px', height: '2px', backgroundColor: 'var(--gold, #c49818)', borderRadius: '2px' }} />
+          </button>
+        </header>
+
+        {/* Conteúdo */}
+        <main style={{ flex: 1, overflow: 'hidden' }}>
+          {children}
+        </main>
+
+        {/* Menu fullscreen overlay */}
+        {menuMobileAberto && (
+          <div style={{ position: 'fixed', inset: 0, zIndex: 9999, backgroundColor: 'var(--ink, #1b3a2f)', display: 'flex', flexDirection: 'column' }}>
+
+            {/* Cabeçalho do overlay */}
+            <div style={{ borderBottom: '3px solid var(--gold, #c49818)', height: '60px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 16px', flexShrink: 0 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <div style={{ border: '1px solid var(--gold, #c49818)', padding: '0 8px', display: 'flex', alignItems: 'center', height: '40px' }}>
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src="/svg/white-02.svg" alt="Logo" style={{ objectFit: 'contain', width: '32px', height: '32px' }} />
+                </div>
+                <div style={{ lineHeight: '1.2' }}>
+                  <div style={{ fontSize: '9px', fontWeight: 800, color: 'var(--gold, #c49818)', letterSpacing: '0.08em', textTransform: 'uppercase' }}>Imobiliária</div>
+                  <div style={{ fontSize: '14px', fontWeight: 800, lineHeight: '1.1', fontFamily: "'Playfair Display', serif" }}>
+                    <span style={{ color: '#ffffff' }}>do </span>
+                    <span style={{ color: 'var(--gold, #c49818)', fontStyle: 'italic' }}>Professor</span>
+                  </div>
+                </div>
+              </div>
+              {/* Botão fechar */}
+              <button
+                onClick={() => setMenuMobileAberto(false)}
+                style={{ background: 'none', border: '1px solid var(--gold, #c49818)', borderRadius: '6px', padding: '6px 10px', cursor: 'pointer', color: 'var(--gold, #c49818)', fontSize: '20px', lineHeight: 1 }}
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Nav fullscreen */}
+            <nav style={{ flex: 1, display: 'flex', flexDirection: 'column', padding: '24px 20px', gap: '8px', overflowY: 'auto' }}>
+              {navItems.map((item) => {
+                const active = isActive(item.href)
+                return (
+                  <button
+                    key={item.href}
+                    onClick={() => navegarMobile(item.href)}
+                    style={{
+                      display: 'flex', alignItems: 'center', gap: '16px',
+                      padding: '16px 20px', borderRadius: '10px', width: '100%',
+                      backgroundColor: active ? 'rgba(196,152,24,0.15)' : 'rgba(255,255,255,0.04)',
+                      border: active ? '1px solid rgba(196,152,24,0.4)' : '1px solid rgba(255,255,255,0.06)',
+                      color: active ? 'var(--gold, #c49818)' : 'rgba(255,255,255,0.75)',
+                      fontSize: '16px', fontWeight: 700, cursor: 'pointer', textAlign: 'left',
+                    }}
+                  >
+                    <item.icon size={22} color={active ? '#c49818' : 'rgba(255,255,255,0.5)'} />
+                    {item.label}
+                  </button>
+                )
+              })}
+            </nav>
+
+            {/* Usuário + Sair */}
+            <div style={{ borderTop: '1px solid rgba(255,255,255,0.08)', padding: '16px 20px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                <div style={{ width: '36px', height: '36px', borderRadius: '50%', backgroundColor: 'var(--gold, #c49818)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '14px', fontWeight: 700, flexShrink: 0 }}>
+                  {usuario.nome.charAt(0).toUpperCase()}
+                </div>
+                <div>
+                  <p style={{ color: '#fff', fontSize: '15px', fontWeight: 700, margin: 0 }}>{usuario.nome}</p>
+                  <p style={{ color: 'rgba(255,255,255,0.45)', fontSize: '12px', margin: 0 }}>{usuario.papel === 'adm' ? 'Administrador' : 'Editor'}</p>
+                </div>
+              </div>
+              <button
+                onClick={handleLogout}
+                style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '12px 16px', borderRadius: '8px', backgroundColor: 'rgba(248,113,113,0.1)', color: '#F87171', border: 'none', cursor: 'pointer', fontSize: '14px', fontWeight: 700, width: '100%' }}
+              >
+                <LogoutIcon size={18} color="#F87171" />
+                Sair
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+    )
+  }
+
+  // ── Desktop ──────────────────────────────────────────────────
   return (
     <div className="flex h-screen" style={{ backgroundColor: 'var(--paper, #f4f1e6)', fontFamily: "'DM Sans', sans-serif", overflow: 'hidden' }}>
       {/* Sidebar */}

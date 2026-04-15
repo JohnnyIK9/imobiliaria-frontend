@@ -290,7 +290,7 @@ export default function HomePage() {
 
   // ── Render ────────────────────────────────────────────────
   return (
-    <div style={{ height: '100vh', overflow: 'hidden', display: 'flex', flexDirection: 'column', backgroundColor: 'var(--color-black)', fontFamily: "'DM Sans', sans-serif" }}>
+    <div style={{ height: isMobile ? '100dvh' : '100vh', overflow: 'hidden', display: 'flex', flexDirection: 'column', backgroundColor: 'var(--color-black)', fontFamily: "'DM Sans', sans-serif" }}>
 
       {/* ── Header ── */}
       <header style={{
@@ -334,9 +334,9 @@ export default function HomePage() {
         </div>
 
         {/* Seletor de cidade — alinhado com o painel lateral */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '3px', width: '390px', alignItems: 'center', justifyContent: 'center', paddingLeft: '40px' }}>
-          <span style={{ color: 'var(--gold, #c49818)', fontSize: '9px', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase' }}>Cidade</span>
-          <div style={{ position: 'relative', width: '180px' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '3px', width: isMobile ? 'auto' : '390px', flex: isMobile ? 1 : undefined, alignItems: isMobile ? 'flex-end' : 'center', justifyContent: 'center', paddingLeft: isMobile ? '8px' : '40px', paddingRight: isMobile ? '4px' : '0', minWidth: 0 }}>
+          <span style={{ color: 'var(--gold, #c49818)', fontSize: '9px', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', width: isMobile ? '90%' : undefined, textAlign: 'center' }}>Cidade</span>
+          <div style={{ position: 'relative', width: isMobile ? '90%' : '180px' }}>
             <select
               value={cidadeSel?.id ?? ''}
               onChange={(e) => {

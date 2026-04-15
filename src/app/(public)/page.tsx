@@ -113,6 +113,15 @@ function contarFiltros(f: Filtros) {
 
 // ── Componente principal ───────────────────────────────────
 export default function HomePage() {
+  const [isMobile, setIsMobile] = useState(false)
+
+  useEffect(() => {
+    const check = () => setIsMobile(window.innerWidth < 768)
+    check()
+    window.addEventListener('resize', check)
+    return () => window.removeEventListener('resize', check)
+  }, [])
+
   const [cidades, setCidades] = useState<Cidade[]>([])
   const [cidadeSel, setCidadeSel] = useState<Cidade | null>(null)
   const [regioes, setRegioes] = useState<RegiaoMapa[]>([])
@@ -372,46 +381,66 @@ export default function HomePage() {
             />
           )}
 
-          {/* Botão Filtros — mobile */}
-          <button
-            onClick={() => setDrawerAberto(true)}
-            style={{
-              display: 'none',
-              position: 'absolute',
-              bottom: '16px',
-              left: '50%',
-              transform: 'translateX(-50%)',
-              backgroundColor: 'var(--color-blue)',
-              color: '#fff',
-              border: 'none',
-              borderRadius: '24px',
-              padding: '10px 24px',
-              fontSize: '14px',
-              fontWeight: 700,
-              cursor: 'pointer',
-              zIndex: 500,
-              boxShadow: '0 4px 16px rgba(0,0,0,0.4)',
-            }}
-            className="btn-filtros-mobile"
-          >
-            Filtros{totalFiltros > 0 ? ` (${totalFiltros})` : ''}
-          </button>
+          {/* Botão Ver imóveis — mobile */}
+          {isMobile && (
+            <button
+              onClick={() => setDrawerAberto(true)}
+              style={{
+                position: 'absolute',
+                bottom: '20px',
+                left: '50%',
+                transform: 'translateX(-50%)',
+                backgroundColor: 'var(--gold, #c49818)',
+                color: 'var(--ink, #1b3a2f)',
+                border: 'none',
+                borderRadius: '24px',
+                padding: '12px 28px',
+                fontSize: '14px',
+                fontWeight: 800,
+                cursor: 'pointer',
+                zIndex: 500,
+                boxShadow: '0 4px 20px rgba(0,0,0,0.5)',
+                whiteSpace: 'nowrap',
+              }}
+            >
+              Ver imóveis{imoveis.length > 0 ? ` (${imoveis.length})` : ''}{totalFiltros > 0 ? ` · ${totalFiltros} filtro${totalFiltros !== 1 ? 's' : ''}` : ''}
+            </button>
+          )}
         </div>
 
-        {/* Painel lateral — desktop 30% */}
+        {/* Painel lateral — desktop 30%, mobile: drawer */}
         <div style={{
-          width: '390px',
+          width: isMobile ? '100%' : '390px',
           flexShrink: 0,
           height: '100%',
           backgroundColor: 'var(--paper, #f4f1e6)',
-          borderLeft: '2px solid var(--gold, #c49818)',
-          display: 'flex',
+          borderLeft: isMobile ? 'none' : '2px solid var(--gold, #c49818)',
+          display: isMobile ? (drawerAberto ? 'flex' : 'none') : 'flex',
           flexDirection: 'column',
           overflow: 'hidden',
-          position: 'relative',
+          position: isMobile ? 'fixed' : 'relative',
+          top: isMobile ? 0 : 'auto',
+          left: isMobile ? 0 : 'auto',
+          right: isMobile ? 0 : 'auto',
+          bottom: isMobile ? 0 : 'auto',
+          zIndex: isMobile ? 1000 : 'auto',
         }}
-        className="painel-lateral"
         >
+          {/* Botão fechar drawer — mobile */}
+          {isMobile && (
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px', backgroundColor: 'var(--ink, #1b3a2f)', flexShrink: 0 }}>
+              <span style={{ color: '#fff', fontWeight: 700, fontSize: '15px', fontFamily: "'Playfair Display', serif" }}>
+                Imóveis{imoveis.length > 0 ? ` (${imoveis.length})` : ''}
+              </span>
+              <button
+                onClick={() => setDrawerAberto(false)}
+                style={{ background: 'none', border: 'none', color: 'var(--gold, #c49818)', fontSize: '22px', cursor: 'pointer', lineHeight: 1 }}
+              >
+                ✕
+              </button>
+            </div>
+          )}
+
           {/* Botão dropdown filtros */}
           <div style={{ padding: '10px 12px', borderBottom: '1px solid rgba(255,255,255,0.08)', flexShrink: 0 }}>
             <button
@@ -705,56 +734,56 @@ export default function HomePage() {
       <footer style={{
         backgroundColor: 'var(--color-green-deeper)',
         borderTop: '1px solid rgba(255,255,255,0.06)',
-        padding: '12px 32px',
+        padding: isMobile ? '10px 16px' : '12px 32px',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'space-between',
-        gap: '16px',
-        flexWrap: 'wrap',
+        gap: isMobile ? '10px' : '16px',
+        flexWrap: 'nowrap',
         flexShrink: 0,
       }}>
         {/* Redes sociais */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '24px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: isMobile ? '14px' : '24px' }}>
 
-        {/* WhatsApp */}
-        <a
-          href={`https://wa.me/${WA_NUMBER}`}
-          target="_blank" rel="noopener noreferrer"
-          style={{ display: 'flex', alignItems: 'center', gap: '8px', textDecoration: 'none', color: '#ffffff', fontSize: '13px', fontWeight: 700 }}
-        >
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 0 1-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 0 1-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 0 1 2.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0 0 12.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 0 0 5.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 0 0-3.48-8.413z"/></svg>
-          (17) 99999-9999
-        </a>
+          {/* WhatsApp */}
+          <a href={`https://wa.me/${WA_NUMBER}`} target="_blank" rel="noopener noreferrer"
+            style={{ display: 'flex', alignItems: 'center', gap: '8px', textDecoration: 'none', color: '#ffffff', fontSize: '13px', fontWeight: 700 }}>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 0 1-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 0 1-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 0 1 2.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0 0 12.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 0 0 5.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 0 0-3.48-8.413z"/></svg>
+            {!isMobile && <span>(17) 99999-9999</span>}
+          </a>
 
-        {/* Facebook */}
-        <a
-          href="https://www.facebook.com/imobiliariadoprofessor/"
-          target="_blank" rel="noopener noreferrer"
-          style={{ display: 'flex', alignItems: 'center', gap: '6px', textDecoration: 'none', color: '#ffffff', fontSize: '13px' }}
-        >
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M24 12.073C24 5.405 18.627 0 12 0S0 5.405 0 12.073C0 18.1 4.388 23.094 10.125 24v-8.437H7.078v-3.49h3.047V9.41c0-3.025 1.792-4.697 4.533-4.697 1.312 0 2.686.236 2.686.236v2.97h-1.514c-1.491 0-1.956.93-1.956 1.874v2.25h3.328l-.532 3.49h-2.796V24C19.612 23.094 24 18.1 24 12.073z"/></svg>
-          imobiliariadoprofessor
-        </a>
+          {/* Facebook */}
+          <a href="https://www.facebook.com/imobiliariadoprofessor/" target="_blank" rel="noopener noreferrer"
+            style={{ display: 'flex', alignItems: 'center', gap: '6px', textDecoration: 'none', color: '#ffffff', fontSize: '13px' }}>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M24 12.073C24 5.405 18.627 0 12 0S0 5.405 0 12.073C0 18.1 4.388 23.094 10.125 24v-8.437H7.078v-3.49h3.047V9.41c0-3.025 1.792-4.697 4.533-4.697 1.312 0 2.686.236 2.686.236v2.97h-1.514c-1.491 0-1.956.93-1.956 1.874v2.25h3.328l-.532 3.49h-2.796V24C19.612 23.094 24 18.1 24 12.073z"/></svg>
+            {!isMobile && <span>imobiliariadoprofessor</span>}
+          </a>
 
-        {/* Instagram */}
-        <a
-          href="https://www.instagram.com/ImobiliariaDoProfessor"
-          target="_blank" rel="noopener noreferrer"
-          style={{ display: 'flex', alignItems: 'center', gap: '6px', textDecoration: 'none', color: '#ffffff', fontSize: '13px' }}
-        >
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 1.366.062 2.633.334 3.608 1.308.975.975 1.246 2.242 1.308 3.608.058 1.266.07 1.646.07 4.85s-.012 3.584-.07 4.85c-.062 1.366-.334 2.633-1.308 3.608-.975.975-2.242 1.246-3.608 1.308-1.266.058-1.646.07-4.85.07s-3.584-.012-4.85-.07c-1.366-.062-2.633-.334-3.608-1.308-.975-.975-1.246-2.242-1.308-3.608C2.175 15.584 2.163 15.204 2.163 12s.012-3.584.07-4.85c.062-1.366.334-2.633 1.308-3.608C4.516 2.497 5.783 2.226 7.15 2.163 8.416 2.105 8.796 2.163 12 2.163zm0-2.163C8.741 0 8.333.014 7.053.072 5.197.157 3.355.745 2.014 2.086.674 3.426.086 5.268 0 7.124-.014 8.333 0 8.741 0 12c0 3.259.014 3.668.072 4.948.085 1.856.673 3.698 2.014 5.038 1.34 1.341 3.182 1.929 5.038 2.014C8.333 23.986 8.741 24 12 24c3.259 0 3.668-.014 4.948-.072 1.856-.085 3.698-.673 5.038-2.014 1.341-1.34 1.929-3.182 2.014-5.038C23.986 15.668 24 15.259 24 12c0-3.259-.014-3.668-.072-4.948-.085-1.856-.673-3.698-2.014-5.038C20.574.745 18.732.157 16.876.072 15.667.014 15.259 0 12 0zm0 5.838a6.162 6.162 0 1 0 0 12.324 6.162 6.162 0 0 0 0-12.324zM12 16a4 4 0 1 1 0-8 4 4 0 0 1 0 8zm6.406-11.845a1.44 1.44 0 1 0 0 2.881 1.44 1.44 0 0 0 0-2.881z"/></svg>
-          @ImobiliariaDoProfessor
-        </a>
+          {/* Instagram */}
+          <a href="https://www.instagram.com/ImobiliariaDoProfessor" target="_blank" rel="noopener noreferrer"
+            style={{ display: 'flex', alignItems: 'center', gap: '6px', textDecoration: 'none', color: '#ffffff', fontSize: '13px' }}>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 1.366.062 2.633.334 3.608 1.308.975.975 1.246 2.242 1.308 3.608.058 1.266.07 1.646.07 4.85s-.012 3.584-.07 4.85c-.062 1.366-.334 2.633-1.308 3.608-.975.975-2.242 1.246-3.608 1.308-1.266.058-1.646.07-4.85.07s-3.584-.012-4.85-.07c-1.366-.062-2.633-.334-3.608-1.308-.975-.975-1.246-2.242-1.308-3.608C2.175 15.584 2.163 15.204 2.163 12s.012-3.584.07-4.85c.062-1.366.334-2.633 1.308-3.608C4.516 2.497 5.783 2.226 7.15 2.163 8.416 2.105 8.796 2.163 12 2.163zm0-2.163C8.741 0 8.333.014 7.053.072 5.197.157 3.355.745 2.014 2.086.674 3.426.086 5.268 0 7.124-.014 8.333 0 8.741 0 12c0 3.259.014 3.668.072 4.948.085 1.856.673 3.698 2.014 5.038 1.34 1.341 3.182 1.929 5.038 2.014C8.333 23.986 8.741 24 12 24c3.259 0 3.668-.014 4.948-.072 1.856-.085 3.698-.673 5.038-2.014 1.341-1.34 1.929-3.182 2.014-5.038C23.986 15.668 24 15.259 24 12c0-3.259-.014-3.668-.072-4.948-.085-1.856-.673-3.698-2.014-5.038C20.574.745 18.732.157 16.876.072 15.667.014 15.259 0 12 0zm0 5.838a6.162 6.162 0 1 0 0 12.324 6.162 6.162 0 0 0 0-12.324zM12 16a4 4 0 1 1 0-8 4 4 0 0 1 0 8zm6.406-11.845a1.44 1.44 0 1 0 0 2.881 1.44 1.44 0 0 0 0-2.881z"/></svg>
+            {!isMobile && <span>@ImobiliariaDoProfessor</span>}
+          </a>
 
         </div>
 
-        {/* Endereço */}
-        <p style={{ margin: 0, color: '#ffffff', fontSize: '12px' }}>
-          © {new Date().getFullYear()} Imobiliária do Professor —{' '}
-          <a href="https://maps.app.goo.gl/6dC2AV9rVV8uYHwUA" target="_blank" rel="noopener noreferrer" style={{ color: '#ffffff', textDecoration: 'underline' }}>
-            Rua Rio de Janeiro, 3708, Centro - Votuporanga - SP
-          </a>
-        </p>
+        {/* Copyright + Endereço */}
+        {isMobile ? (
+          <p style={{ margin: 0, color: '#ffffff', fontSize: '11px', whiteSpace: 'nowrap' }}>
+            © {new Date().getFullYear()} Imobiliária do Professor —{' '}
+            <a href="https://maps.app.goo.gl/6dC2AV9rVV8uYHwUA" target="_blank" rel="noopener noreferrer" style={{ color: '#ffffff', textDecoration: 'underline' }}>
+              Votuporanga - SP
+            </a>
+          </p>
+        ) : (
+          <p style={{ margin: 0, color: '#ffffff', fontSize: '12px' }}>
+            © {new Date().getFullYear()} Imobiliária do Professor —{' '}
+            <a href="https://maps.app.goo.gl/6dC2AV9rVV8uYHwUA" target="_blank" rel="noopener noreferrer" style={{ color: '#ffffff', textDecoration: 'underline' }}>
+              Rua Rio de Janeiro, 3708, Centro - Votuporanga - SP
+            </a>
+          </p>
+        )}
       </footer>
 
       {/* Responsividade */}

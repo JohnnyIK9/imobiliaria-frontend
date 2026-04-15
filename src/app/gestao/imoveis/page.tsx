@@ -186,6 +186,17 @@ function normalizarImovel(raw: Record<string, unknown>): Imovel {
 
 // ── Componente principal ───────────────────────────────────
 export default function ImoveisPage() {
+  // Mobile
+  const [isMobile, setIsMobile] = useState(false)
+  const [vistaAtiva, setVistaAtiva] = useState<'lista' | 'detalhe'>('lista')
+
+  useEffect(() => {
+    const check = () => setIsMobile(window.innerWidth < 768)
+    check()
+    window.addEventListener('resize', check)
+    return () => window.removeEventListener('resize', check)
+  }, [])
+
   // Header — Estado → Cidade
   const [estados, setEstados] = useState<Estado[]>([])
   const [estadoSel, setEstadoSel] = useState('')
@@ -376,6 +387,7 @@ export default function ImoveisPage() {
       if (r.ok) setFormRegioes(await r.json())
     })
     carregarMidias(imovel.id)
+    if (isMobile) setVistaAtiva('detalhe')
   }
 
   // ── Novo imóvel ───────────────────────────────────────────
@@ -388,6 +400,7 @@ export default function ImoveisPage() {
     setMidiaIdx(0)
     setConfirmandoExclusao(false)
     if (toast) setToast(null)
+    if (isMobile) setVistaAtiva('detalhe')
     // Carrega regiões da cidade selecionada no header
     setFormRegioes([])
     if (cidadeSel) {
@@ -399,6 +412,14 @@ export default function ImoveisPage() {
 
   // ── Cancelar ──────────────────────────────────────────────
   function cancelar() {
+    if (isMobile) {
+      setVistaAtiva('lista')
+      setImovelSel(null)
+      setModoNovo(false)
+      setForm(FORM_VAZIO)
+      setConfirmandoExclusao(false)
+      return
+    }
     if (imovelSel) {
       selecionarImovel(imovelSel)
     } else {
@@ -690,27 +711,33 @@ export default function ImoveisPage() {
         style={{
           backgroundColor: 'var(--ink, #1b3a2f)',
           borderBottom: '3px solid var(--gold, #c49818)',
-          padding: '0 24px',
-          height: '64px',
+          padding: isMobile ? '8px 14px' : '0 24px',
+          height: isMobile ? 'auto' : '64px',
           display: 'flex',
           alignItems: 'center',
-          justifyContent: 'space-between',
+          justifyContent: isMobile ? 'center' : 'space-between',
           flexShrink: 0,
           position: 'relative',
+          flexWrap: isMobile ? 'wrap' : undefined,
+          gap: isMobile ? '8px' : undefined,
         }}
       >
-        <h1 style={{ color: '#ffffff', fontSize: '16px', fontWeight: 800, margin: 0, fontFamily: "'Playfair Display', serif" }}>
-          Imóveis
-        </h1>
+        {!isMobile && (
+          <h1 style={{ color: '#ffffff', fontSize: '16px', fontWeight: 800, margin: 0, fontFamily: "'Playfair Display', serif" }}>
+            Imóveis
+          </h1>
+        )}
 
-        {/* Estado → Cidade — centralizado */}
+        {/* Estado → Cidade */}
         <div style={{
-          position: 'absolute',
-          left: '50%',
-          transform: 'translateX(-50%)',
+          position: isMobile ? 'static' : 'absolute',
+          left: isMobile ? undefined : '50%',
+          transform: isMobile ? undefined : 'translateX(-50%)',
           display: 'flex',
           alignItems: 'center',
           gap: '10px',
+          flexWrap: isMobile ? 'wrap' : undefined,
+          justifyContent: isMobile ? 'center' : undefined,
         }}>
           {/* Estado */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
@@ -762,24 +789,26 @@ export default function ImoveisPage() {
             </div>
           </div>
 
-          {/* Botão novo — ao lado de Cidade */}
-          <button
-            onClick={novoImovel}
-            style={{
-              backgroundColor: 'var(--ink, #1b3a2f)',
-              color: 'var(--gold, #c49818)',
-              border: '1px solid var(--gold, #c49818)',
-              borderRadius: '8px',
-              padding: '8px 18px',
-              fontSize: '13px',
-              fontWeight: 800,
-              cursor: 'pointer',
-              whiteSpace: 'nowrap',
-              marginTop: '11px',
-            }}
-          >
-            + Novo
-          </button>
+          {/* Botão novo — ao lado de Cidade (apenas desktop) */}
+          {!isMobile && (
+            <button
+              onClick={novoImovel}
+              style={{
+                backgroundColor: 'var(--ink, #1b3a2f)',
+                color: 'var(--gold, #c49818)',
+                border: '1px solid var(--gold, #c49818)',
+                borderRadius: '8px',
+                padding: '8px 18px',
+                fontSize: '13px',
+                fontWeight: 800,
+                cursor: 'pointer',
+                whiteSpace: 'nowrap',
+                marginTop: '11px',
+              }}
+            >
+              + Novo
+            </button>
+          )}
         </div>
       </header>
 
@@ -789,13 +818,13 @@ export default function ImoveisPage() {
         {/* ── Painel lateral (lista) ── */}
         <div
           style={{
-            width: '390px',
+            width: isMobile ? '100%' : '390px',
             flexShrink: 0,
             height: '100%',
-            paddingLeft: '14px',
+            paddingLeft: isMobile ? '0' : '14px',
             backgroundColor: 'var(--paper, #f4f1e6)',
-            borderRight: '2px solid var(--gold, #c49818)',
-            display: 'flex',
+            borderRight: isMobile ? 'none' : '2px solid var(--gold, #c49818)',
+            display: isMobile ? (vistaAtiva === 'lista' ? 'flex' : 'none') : 'flex',
             flexDirection: 'column',
             overflow: 'hidden',
           }}
@@ -834,16 +863,33 @@ export default function ImoveisPage() {
               borderBottom: '1px solid var(--paper-3, #dddac8)',
               flexShrink: 0,
               display: 'flex',
-              alignItems: 'baseline',
+              alignItems: 'center',
               justifyContent: 'space-between',
             }}
           >
             <span style={{ color: 'var(--ink, #1b3a2f)', fontSize: '15px', fontWeight: 800, fontFamily: "'Playfair Display', serif" }}>
               Imóveis
+              <span style={{ color: 'var(--sepia, #7a9e88)', fontSize: '11px', fontWeight: 400, marginLeft: '8px' }}>
+                {imoveisFiltrados.length} encontrado{imoveisFiltrados.length !== 1 ? 's' : ''}
+              </span>
             </span>
-            <span style={{ color: 'var(--sepia, #7a9e88)', fontSize: '11px' }}>
-              {imoveisFiltrados.length} encontrado{imoveisFiltrados.length !== 1 ? 's' : ''}
-            </span>
+            {isMobile && (
+              <button
+                onClick={novoImovel}
+                style={{
+                  backgroundColor: 'var(--ink, #1b3a2f)',
+                  color: 'var(--gold, #c49818)',
+                  border: '1px solid var(--gold, #c49818)',
+                  borderRadius: '8px',
+                  padding: '6px 14px',
+                  fontSize: '13px',
+                  fontWeight: 800,
+                  cursor: 'pointer',
+                }}
+              >
+                + Novo
+              </button>
+            )}
           </div>
 
           {/* Cards */}
@@ -875,7 +921,7 @@ export default function ImoveisPage() {
             flex: 1,
             height: '100%',
             backgroundColor: 'var(--paper-2, #eae6d4)',
-            display: 'flex',
+            display: isMobile ? (vistaAtiva === 'detalhe' ? 'flex' : 'none') : 'flex',
             flexDirection: 'column',
             overflow: 'hidden',
           }}
@@ -906,11 +952,25 @@ export default function ImoveisPage() {
                   alignItems: 'center',
                   justifyContent: 'space-between',
                   backgroundColor: 'var(--paper, #f4f1e6)',
+                  gap: '8px',
                 }}
               >
-                <span style={{ color: 'var(--ink, #1b3a2f)', fontFamily: "'Playfair Display', serif", fontSize: '18px', fontWeight: 700 }}>
-                  {modoNovo ? 'Novo imóvel' : `Imóvel #${imovelSel?.codigo}`}
-                </span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', minWidth: 0 }}>
+                  {isMobile && (
+                    <button
+                      onClick={() => { setVistaAtiva('lista'); setImovelSel(null); setModoNovo(false) }}
+                      style={{
+                        background: 'none', border: 'none', color: 'var(--ink, #1b3a2f)',
+                        fontSize: '20px', cursor: 'pointer', padding: '0', lineHeight: 1, flexShrink: 0,
+                      }}
+                    >
+                      ←
+                    </button>
+                  )}
+                  <span style={{ color: 'var(--ink, #1b3a2f)', fontFamily: "'Playfair Display', serif", fontSize: isMobile ? '16px' : '18px', fontWeight: 700, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    {modoNovo ? 'Novo imóvel' : `Imóvel #${imovelSel?.codigo}`}
+                  </span>
+                </div>
                 {!modoNovo && imovelSel && (
                   <button
                     onClick={pedirExclusao}
@@ -920,7 +980,7 @@ export default function ImoveisPage() {
                       border: '1px solid rgba(248,113,113,0.3)', borderRadius: '7px',
                       padding: '6px 12px', fontSize: '12px', fontWeight: 700,
                       cursor: confirmandoExclusao ? 'not-allowed' : 'pointer',
-                      opacity: confirmandoExclusao ? 0.5 : 1,
+                      opacity: confirmandoExclusao ? 0.5 : 1, flexShrink: 0,
                     }}
                   >
                     Excluir
@@ -1192,7 +1252,7 @@ export default function ImoveisPage() {
                   </CampoForm>
 
                   {/* Quartos + Banheiros + Área + Vagas */}
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: '12px' }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr 1fr' : '1fr 1fr 1fr 1fr', gap: '12px' }}>
                     {([
                       { label: 'Quartos', key: 'quartos', max: 20 },
                       { label: 'Banheiros', key: 'banheiros', max: 20 },

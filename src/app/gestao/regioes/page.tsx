@@ -49,6 +49,19 @@ export default function RegioesPage() {
   const [cidades, setCidades] = useState<Cidade[]>([])
   const [regioes, setRegioes] = useState<Regiao[]>([])
 
+  const [isMobile, setIsMobile] = useState(false)
+
+  useEffect(() => {
+    const check = () => {
+      const mobile = window.innerWidth < 768
+      setIsMobile(mobile)
+      if (!mobile) setPainelAberto(true)
+    }
+    check()
+    window.addEventListener('resize', check)
+    return () => window.removeEventListener('resize', check)
+  }, [])
+
   const [estadoSel, setEstadoSel] = useState('')
   const [cidadeSel, setCidadeSel] = useState<Cidade | null>(null)
 
@@ -61,7 +74,7 @@ export default function RegioesPage() {
 
   const [salvando, setSalvando] = useState(false)
   const [toast, setToast] = useState<{ msg: string; tipo: 'sucesso' | 'erro' } | null>(null)
-  const [painelAberto, setPainelAberto] = useState(true)
+  const [painelAberto, setPainelAberto] = useState(false)
   const [mapaCarregado, setMapaCarregado] = useState(false)
 
   const [modalCidade, setModalCidade] = useState(false)
@@ -206,6 +219,7 @@ export default function RegioesPage() {
       mapaRef.current?.ativarDesenho()
       setDesenhando(true)
       setDesenhoFinalizado(false)
+      if (isMobile) setPainelAberto(false)
     }
   }
 
@@ -253,6 +267,7 @@ export default function RegioesPage() {
       pts,
       (novos) => setModoEdicao((prev) => prev ? { ...prev, pontos: novos } : null),
     )
+    if (isMobile) setPainelAberto(false)
   }
 
   function cancelarEdicao() {
@@ -452,21 +467,24 @@ export default function RegioesPage() {
       <div
         style={{
           display: 'flex',
-          alignItems: 'center',
-          gap: '12px',
-          padding: '12px 20px',
+          flexDirection: isMobile ? 'column' : 'row',
+          alignItems: isMobile ? 'stretch' : 'center',
+          gap: '8px',
+          padding: isMobile ? '10px 14px' : '12px 20px',
           borderBottom: '3px solid var(--gold, #c49818)',
           backgroundColor: 'var(--ink, #1b3a2f)',
           flexShrink: 0,
-          flexWrap: 'wrap',
         }}
       >
-        <h1 style={{ color: '#ffffff', fontSize: '16px', fontWeight: 800, margin: 0, marginRight: '8px', fontFamily: "'Playfair Display', serif" }}>
-          Regiões
-        </h1>
+        {/* Título — apenas no desktop */}
+        {!isMobile && (
+          <h1 style={{ color: '#ffffff', fontSize: '16px', fontWeight: 800, margin: 0, marginRight: '8px', fontFamily: "'Playfair Display', serif" }}>
+            Regiões
+          </h1>
+        )}
 
-        {/* Selects estado + cidade — centro do header */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flex: 1, justifyContent: 'center', flexWrap: 'wrap' }}>
+        {/* Selects + botões */}
+        <div style={{ display: 'flex', alignItems: isMobile ? 'center' : 'center', gap: '10px', flex: isMobile ? undefined : 1, justifyContent: 'center', flexWrap: 'wrap', width: isMobile ? '100%' : undefined }}>
           {/* Estado */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
             <span style={{ color: 'var(--gold, #c49818)', fontSize: '9px', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase' }}>
@@ -568,24 +586,6 @@ export default function RegioesPage() {
             </button>
           )}
         </div>
-
-        {/* Toggle painel mobile */}
-        <button
-          onClick={() => setPainelAberto((v) => !v)}
-          className="md:hidden"
-          style={{
-            backgroundColor: 'rgba(255,255,255,0.08)',
-            color: '#ffffff',
-            border: '1px solid rgba(255,255,255,0.2)',
-            borderRadius: '8px',
-            padding: '8px 12px',
-            fontSize: '12px',
-            fontWeight: 700,
-            cursor: 'pointer',
-          }}
-        >
-          {painelAberto ? '✕ Painel' : '☰ Painel'}
-        </button>
       </div>
 
       {/* Corpo */}
@@ -649,24 +649,81 @@ export default function RegioesPage() {
             >
               {pontos.length < 3
                 ? `Clique no mapa para adicionar pontos (${pontos.length} adicionado${pontos.length !== 1 ? 's' : ''})`
-                : `${pontos.length} pontos — duplo clique para finalizar`}
+                : isMobile
+                  ? `${pontos.length} pontos — clique em Regiões para finalizar`
+                  : `${pontos.length} pontos — dê um nome e salve a região`}
             </div>
+          )}
+
+          {/* Botão flutuante mobile */}
+          {isMobile && !painelAberto && (
+            <button
+              onClick={() => {
+                if (desenhando && pontos.length >= 3) {
+                  mapaRef.current?.finalizarDesenho()
+                  setPainelAberto(true)
+                } else {
+                  setPainelAberto(true)
+                }
+              }}
+              style={{
+                position: 'absolute',
+                bottom: '24px',
+                left: '50%',
+                transform: 'translateX(-50%)',
+                zIndex: 1000,
+                backgroundColor: desenhando && pontos.length >= 3 ? '#14532d' : 'var(--ink, #1b3a2f)',
+                color: 'var(--gold, #c49818)',
+                border: '2px solid var(--gold, #c49818)',
+                borderRadius: '24px',
+                padding: '12px 28px',
+                fontSize: '14px',
+                fontWeight: 800,
+                cursor: 'pointer',
+                whiteSpace: 'nowrap',
+                boxShadow: '0 4px 16px rgba(0,0,0,0.4)',
+              }}
+            >
+              {desenhando && pontos.length >= 3
+                ? `✓ Regiões — Finalizar (${pontos.length} pts)`
+                : `☰ Regiões${regioes.length > 0 ? ` (${regioes.length})` : ''}`}
+            </button>
           )}
         </div>
 
-        {/* Painel lateral */}
+        {/* Painel lateral — sidebar no desktop, fullscreen no mobile */}
         <div
           style={{
-            width: '340px',
+            width: isMobile ? '100%' : '340px',
             flexShrink: 0,
-            height: '100%',
+            height: isMobile ? '100%' : '100%',
             backgroundColor: 'var(--paper, #f4f1e6)',
-            borderLeft: '1px solid var(--gold, #c49818)',
+            borderLeft: isMobile ? 'none' : '1px solid var(--gold, #c49818)',
             display: painelAberto ? 'flex' : 'none',
             flexDirection: 'column',
             overflow: 'hidden',
+            ...(isMobile ? {
+              position: 'fixed',
+              inset: 0,
+              zIndex: 1500,
+            } : {}),
           }}
         >
+          {/* Barra do topo do painel no mobile */}
+          {isMobile && (
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px', backgroundColor: 'var(--ink, #1b3a2f)', borderBottom: '3px solid var(--gold, #c49818)', flexShrink: 0 }}>
+              <span style={{ color: '#fff', fontSize: '15px', fontWeight: 800, fontFamily: "'Playfair Display', serif" }}>
+                {modoEdicao ? `Editando: ${modoEdicao.regiao.nome}` : 'Painel'}
+              </span>
+              <button
+                onClick={() => setPainelAberto(false)}
+                style={{ background: 'none', border: '1px solid var(--gold, #c49818)', borderRadius: '6px', padding: '5px 10px', cursor: 'pointer', color: 'var(--gold, #c49818)', fontSize: '18px', lineHeight: 1 }}
+              >
+                ✕
+              </button>
+            </div>
+          )}
+
           {/* ── Modo edição ── */}
           {modoEdicao ? (
             <div style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
@@ -794,7 +851,7 @@ export default function RegioesPage() {
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                   <div style={{ display: 'flex', gap: '8px' }}>
                     <button
-                      onClick={toggleDesenho}
+                      onClick={desenhando || pontos.length > 0 ? limparDesenho : toggleDesenho}
                       disabled={!podeDesenhar}
                       style={{
                         flex: 1,
@@ -804,14 +861,14 @@ export default function RegioesPage() {
                         fontWeight: 700,
                         cursor: podeDesenhar ? 'pointer' : 'not-allowed',
                         opacity: podeDesenhar ? 1 : 0.4,
-                        backgroundColor: desenhando ? 'rgba(248,113,113,0.1)' : 'var(--ink, #1b3a2f)',
-                        color: desenhando ? '#F87171' : 'var(--gold, #c49818)',
-                        border: desenhando ? '1px solid #F87171' : '1px solid var(--gold, #c49818)',
+                        backgroundColor: desenhando || pontos.length > 0 ? 'rgba(248,113,113,0.1)' : 'var(--ink, #1b3a2f)',
+                        color: desenhando || pontos.length > 0 ? '#F87171' : 'var(--gold, #c49818)',
+                        border: desenhando || pontos.length > 0 ? '1px solid #F87171' : '1px solid var(--gold, #c49818)',
                       }}
                     >
-                      {desenhando ? '✕ Parar' : desenhoFinalizado ? '✓ Finalizado' : '✏ Desenhar'}
+                      {desenhando || pontos.length > 0 ? '✕ Parar' : desenhoFinalizado ? '✓ Finalizado' : '✏ Desenhar'}
                     </button>
-                    {pontos.length > 0 && (
+                    {false && (
                       <button onClick={limparDesenho} style={{ ...btnSecundario, flex: 1 }}>
                         Limpar
                       </button>
@@ -926,6 +983,7 @@ export default function RegioesPage() {
             position: 'fixed', inset: 0, zIndex: 2000,
             backgroundColor: 'rgba(0,0,0,0.6)',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
+            padding: isMobile ? '16px' : '0',
           }}
         >
           <div
@@ -935,9 +993,11 @@ export default function RegioesPage() {
               border: '1px solid var(--gold, #c49818)',
               borderTop: '3px solid var(--gold, #c49818)',
               borderRadius: '14px',
-              padding: '28px',
+              padding: isMobile ? '20px 16px' : '28px',
               width: '100%',
               maxWidth: '420px',
+              maxHeight: isMobile ? '90dvh' : undefined,
+              overflowY: isMobile ? 'auto' : undefined,
               display: 'flex',
               flexDirection: 'column',
               gap: '16px',
@@ -1087,6 +1147,7 @@ export default function RegioesPage() {
             position: 'fixed', inset: 0, zIndex: 2000,
             backgroundColor: 'rgba(0,0,0,0.6)',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
+            padding: isMobile ? '16px' : '0',
           }}
         >
           <div
@@ -1096,9 +1157,11 @@ export default function RegioesPage() {
               border: '1px solid var(--gold, #c49818)',
               borderTop: '3px solid var(--gold, #c49818)',
               borderRadius: '14px',
-              padding: '28px',
+              padding: isMobile ? '20px 16px' : '28px',
               width: '100%',
               maxWidth: '420px',
+              maxHeight: isMobile ? '90dvh' : undefined,
+              overflowY: isMobile ? 'auto' : undefined,
               display: 'flex',
               flexDirection: 'column',
               gap: '16px',

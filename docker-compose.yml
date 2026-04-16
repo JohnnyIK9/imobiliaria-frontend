@@ -1,0 +1,12 @@
+services:
+  imobiliaria-frontend:
+    build:
+      context: .
+      args:
+        NEXT_PUBLIC_WA_NUMBER: 5517997195364
+    container_name: imobiliaria-frontend
+    ports:
+      - "9091:3000"
+    environment:
+      - API_ORIGIN=https://api.imobiliariadoprofessor.com.br
+    restart: unless-stopped

@@ -1,0 +1,30 @@
+@import url('https://fonts.googleapis.com/css2?family=Lato:wght@300;400;700;800&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,700;1,9..40,400&family=Playfair+Display:wght@400;700;800&display=swap');
+@import "tailwindcss";
+
+:root {
+  /* Nova paleta */
+  --ink:        #1b3a2f;
+  --ink-soft:   #2e5444;
+  --paper:      #f4f1e6;
+  --paper-2:    #eae6d4;
+  --paper-3:    #dddac8;
+  --gold:       #c49818;
+  --gold-lt:    #e8c030;
+  --sepia:      #7a9e88;
+
+  /* Mapeamento dos nomes antigos → nova paleta */
+  --color-black:        var(--ink);
+  --color-white:        var(--paper);
+  --color-green-mid:    var(--ink-soft);
+  --color-green-dark:   var(--ink-soft);
+  --color-blue:         var(--gold);
+  --color-green-deeper: var(--ink);
+  --color-gray-dark:    var(--sepia);
+  --color-green-wa:     #25D366;
+}
+
+body {
+  background: var(--paper);
+  color: var(--ink);
+  font-family: 'DM Sans', sans-serif;
+}

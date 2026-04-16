@@ -1,0 +1,11 @@
+services:
+  imobiliaria-frontend:
+    build:
+      context: .
+      args:
+        NEXT_PUBLIC_WA_NUMBER: 5517997195364
+        NEXT_PUBLIC_API_URL: https://apianaerichard.visualizeaquiseu.app.br
+    container_name: imobiliaria-frontend-homolog
+    ports:
+      - "9091:3000"
+    restart: unless-stopped

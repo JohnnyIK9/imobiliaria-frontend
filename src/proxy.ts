@@ -7,6 +7,13 @@ const HOSTS_GESTAO = [
 ]
 
 export function proxy(request: NextRequest) {
+  const { pathname } = request.nextUrl
+
+  // Não reescrever arquivos estáticos da pasta public/
+  if (/\.[a-zA-Z0-9]+$/.test(pathname)) {
+    return NextResponse.next()
+  }
+
   const host = request.headers.get('host') ?? ''
   const hostname = host.split(':')[0]
 
@@ -29,6 +36,6 @@ export function proxy(request: NextRequest) {
 export const config = {
   matcher: [
     // Aplica em todas as rotas exceto arquivos estáticos e _next
-    '/((?!_next/static|_next/image|favicon.ico).*)',
+    '/((?!_next/static|_next/image|favicon\\.ico).*)',
   ],
 }

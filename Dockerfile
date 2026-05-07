@@ -13,7 +13,7 @@ COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 
 # Variáveis públicas precisam estar disponíveis no build
-ARG NEXT_PUBLIC_WA_NUMBER=5517997195364
+ARG NEXT_PUBLIC_WA_NUMBER=5517996383708
 ENV NEXT_PUBLIC_WA_NUMBER=$NEXT_PUBLIC_WA_NUMBER
 
 ARG NEXT_PUBLIC_API_URL=

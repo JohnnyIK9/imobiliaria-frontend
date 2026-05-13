@@ -19,6 +19,9 @@ ENV NEXT_PUBLIC_WA_NUMBER=$NEXT_PUBLIC_WA_NUMBER
 ARG NEXT_PUBLIC_API_URL=
 ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
 
+ARG API_ORIGIN=http://localhost:8080
+ENV API_ORIGIN=$API_ORIGIN
+
 RUN npm run build
 
 # ── Stage 3: produção ─────────────────────────────────────────

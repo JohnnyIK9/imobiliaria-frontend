@@ -11,9 +11,9 @@ const nextConfig: NextConfig = {
       'www.imobiliariadoprofessor.com.br',
       'gestao.imobiliariadoprofessor.com.br',
       // Homologação
-      'anaericharvisualizeaquiseu.app.br',
-      'www.anaericharvisualizeaquiseu.app.br',
-      'gestaoanaericharvisualizeaquiseu.app.br',
+      'anaerichard.visualizeaquiseu.app.br',
+      'www.anaerichard.visualizeaquiseu.app.br',
+      'gestaoanaerichard.visualizeaquiseu.app.br',
       ],
     },
   },

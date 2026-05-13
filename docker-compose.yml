@@ -4,6 +4,7 @@ services:
       context: .
       args:
         NEXT_PUBLIC_WA_NUMBER: 5517996383708
+        NEXT_PUBLIC_API_URL: https://api.imobiliariadoprofessor.com.br
     container_name: imobiliaria-frontend
     ports:
       - "9091:3000"

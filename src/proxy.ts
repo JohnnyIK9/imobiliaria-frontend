@@ -20,6 +20,11 @@ export function proxy(request: NextRequest) {
   const isGestao = HOSTS_GESTAO.includes(hostname)
 
   if (isGestao) {
+    // Rotas de API não devem ser reescritas — o next.config.ts já as proxeia para o backend
+    if (pathname.startsWith('/api/')) {
+      return NextResponse.next()
+    }
+
     const url = request.nextUrl.clone()
 
     // Evita duplo prefixo caso a URL já comece com /gestao
